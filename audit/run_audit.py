@@ -15,9 +15,9 @@ from rich.console import Console
 from rich.table import Table
 
 from codemonkeys.core.analysis import analyze_files, format_analysis
-from codemonkeys.core.events import Event, EventCollector
+from codemonkeys.core.events import Event
 from codemonkeys.core.runner import run_agent
-from codemonkeys.core.types import AgentDefinition, RunResult
+from codemonkeys.core.types import AgentDefinition, RunResult, TokenUsage
 
 from codemonkeys.agents.architecture_reviewer import make_architecture_reviewer
 from codemonkeys.agents.changelog_reviewer import make_changelog_reviewer
@@ -171,10 +171,8 @@ def setup_workspace() -> Path:
 async def run_one(agent: AgentDefinition, prompt: str) -> RunResult:
     """Run a single agent with event collection."""
     async with SEM:
-        collector = EventCollector()
         console.print(f"  [dim]Starting {agent.name}...[/dim]")
-        result = await run_agent(agent, prompt, on_event=collector.handle)
-        result.events = collector.events
+        result = await run_agent(agent, prompt)
         status = (
             "[green]OK[/green]" if result.error is None else "[red]ERR[/red]"
         )
@@ -196,6 +194,17 @@ async def run_parallel(
     for name, result in zip(names, gathered):
         if isinstance(result, Exception):
             console.print(f"  [red]{name} failed: {result}[/red]")
+            agent_def = agents[name][0]
+            results[name] = RunResult(
+                output=None,
+                text="",
+                usage=TokenUsage(input_tokens=0, output_tokens=0),
+                cost_usd=0.0,
+                duration_ms=0,
+                error=str(result),
+                agent_def=agent_def,
+                events=[],
+            )
         else:
             results[name] = result
     return results
@@ -234,7 +243,7 @@ async def phase1(work_dir: Path) -> dict[str, RunResult]:
     agents: dict[str, tuple[AgentDefinition, str]] = {}
 
     # Python reviewer — batch files in groups of 3
-    batches = [all_py[:3], all_py[3:]]
+    batches = [b for b in [all_py[:3], all_py[3:]] if b]
     for i, batch in enumerate(batches):
         agents[f"python_reviewer_batch{i}"] = (
             for_audit(make_python_reviewer(batch)),
@@ -453,6 +462,7 @@ async def main() -> None:
         all_results.update(p3)
     finally:
         os.chdir(saved_cwd)
+        shutil.rmtree(work_dir, ignore_errors=True)
 
     console.print("\n[bold]Saving results...[/bold]")
     for name, result in all_results.items():
@@ -460,7 +470,6 @@ async def main() -> None:
     save_summary(all_results, output_dir)
     print_summary_table(all_results)
 
-    shutil.rmtree(work_dir)
     console.print(f"\n[bold green]Results saved to {output_dir}[/bold green]")
 
 
