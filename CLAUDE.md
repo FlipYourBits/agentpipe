@@ -14,7 +14,6 @@ codemonkeys/
   artifacts/schemas/            # Pydantic schemas (findings, architecture, results)
   workflows/                    # State-machine orchestration (review, implement)
   run_review.py                 # CLI review pipeline (standalone)
-  tui/                          # Textual TUI (in progress)
 tests/                          # Test suite
 docs/codemonkeys/
   specs/                        # Design specs
