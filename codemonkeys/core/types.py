@@ -20,6 +20,8 @@ def json_safe(obj: Any) -> Any:
         return {str(k): json_safe(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
         return [json_safe(v) for v in obj]
+    if isinstance(obj, type):
+        return obj.__qualname__
     if hasattr(obj, "model_dump"):
         return obj.model_dump()  # type: ignore[union-attr]
     if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
