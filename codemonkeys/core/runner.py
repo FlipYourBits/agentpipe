@@ -36,6 +36,7 @@ from codemonkeys.core.events import (
     TokenUpdate,
 )
 from codemonkeys.core.hooks import build_check_hooks, build_permission_hooks, merge_hooks
+from codemonkeys.core.sandbox import restrict
 from codemonkeys.core.types import AgentDefinition, RunResult, TokenUsage, json_safe
 
 _log = logging.getLogger(__name__)
@@ -86,6 +87,7 @@ async def run_agent(
     on_event: EventHandler | None = None,
 ) -> RunResult:
     """Run a single agent and return its result."""
+    restrict(".")
     collector = EventCollector()
 
     def _combined_emit(event: Any) -> None:
@@ -146,7 +148,7 @@ async def run_agent(
     options = ClaudeAgentOptions(
         system_prompt=agent.system_prompt,
         model=agent.model,
-        permission_mode="bypassPermissions",
+        permission_mode="dontAsk",
         tools=sdk_tools,
         allowed_tools=allowed,
         hooks=hooks,

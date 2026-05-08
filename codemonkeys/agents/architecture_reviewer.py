@@ -27,18 +27,28 @@ def make_architecture_reviewer(
     *,
     files: list[str],
     file_summaries: list[dict[str, str]],
-    structural_metadata: str,
+    structural_metadata: str = "",
     model: str = "opus",
 ) -> AgentDefinition:
     """Create an architecture reviewer scoped to the given files.
 
-    ``structural_metadata`` is pre-formatted text from ``format_analysis()``
-    containing imports, function signatures, and class hierarchies extracted
-    via ast.  The agent reasons over this metadata instead of reading files.
+    AST structural metadata is collected automatically via a SubagentStart
+    hook. If ``structural_metadata`` is also passed, it is included in the
+    system prompt as a pre-computed supplement.
     """
     summaries_text = "\n".join(
         f"- `{s['file']}`: {s['summary']}" for s in file_summaries
     )
+
+    metadata_section = ""
+    if structural_metadata:
+        metadata_section = f"""
+## Pre-computed Structural Metadata
+
+{structural_metadata}
+"""
+
+    files_arg = " ".join(files)
 
     return AgentDefinition(
         name=f"architecture_reviewer:{len(files)}_files",
@@ -48,7 +58,7 @@ You review a codebase for cross-file design issues. You have been given:
 
 1. **Structural metadata** — imports, function signatures, class hierarchies,
    and decorators extracted via static analysis (ast). This is deterministic
-   and complete.
+   and complete. It is injected automatically at session start.
 2. **Per-file summaries** — one-sentence descriptions from per-file reviewers
    who already read the source code.
 
@@ -62,11 +72,7 @@ read all files.
 You are a **read-only reviewer**. Do NOT modify, create, or delete any files.
 Do NOT run commands, install packages, or modify git state. Your only job is
 to analyze and report findings.
-
-## Structural Metadata
-
-{structural_metadata}
-
+{metadata_section}
 ## Per-File Summaries
 
 {summaries_text}
@@ -103,5 +109,10 @@ Return a JSON object with:
 
 {HARDENING_CHECKLIST}""",
         tools=["Read"],
+        hooks={
+            "SubagentStart": [
+                (None, f"uv run python -m codemonkeys.core.analysis {files_arg}"),
+            ],
+        },
         output_schema=ArchitectureFindings,
     )
