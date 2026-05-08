@@ -278,8 +278,7 @@ async def run_review(
 
             try:
                 audit_agents = [
-                    auditor_from_result(r, model=model)
-                    for r in successful_results
+                    auditor_from_result(r, model=model) for r in successful_results
                 ]
                 audit_results_raw: list[RunResult] = await asyncio.gather(
                     *[

@@ -150,9 +150,7 @@ def _print_result(result: RunResult) -> None:
     console.print(f"\n[dim]{fix.summary}[/dim]")
 
 
-async def run_fix(
-    items: list[FixItem], model: str = "opus"
-) -> RunResult:
+async def run_fix(items: list[FixItem], model: str = "opus") -> RunResult:
     """Run the fixer agent on selected findings."""
     agent = make_fixer(items, model=model)
 
@@ -219,9 +217,7 @@ def main() -> None:
         sys.exit(0)
 
     selected = [items[i] for i in selected_indices]
-    console.print(
-        f"\n[bold]Fixing {len(selected)} finding(s) [{args.model}][/bold]"
-    )
+    console.print(f"\n[bold]Fixing {len(selected)} finding(s) [{args.model}][/bold]")
 
     result = asyncio.run(run_fix(selected, model=args.model))
     _print_result(result)

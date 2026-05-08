@@ -1,1 +1,5 @@
 - does our code review use pyright for proper type hint checking? do we have anything for code coverage in tests? and do we have anything that ensures our tests are QUALITY tests that actually test the code rather than mocking a bunch of stuff to just make the test pass?
+- is there a catch-all for sdk messages that don't match one of our pydantic models so we can ensure we log everything?
+- did we implement the OS based sandboxing for our agents where it CANNOT write via Operating system permissions outside the current working dir and its children and the .claude folder locatins? if not, are the PreToolUseHooks robust enough?
+- do we need to use the cost estimator? don't we get costs back from the sdk messages in realtime? is the cost estimator used elsewhere?
+- would it be useful to prepend the tools available to use in the prompt to the agent? for example if we restrict glob the agent might still try to use it, but if we say it only has access to certain tools maybe it would be less likely to try to  use others? 

@@ -26,23 +26,43 @@ def json_safe(obj: Any) -> Any:
         return obj.model_dump()  # type: ignore[union-attr]
     if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
         return {
-            f.name: json_safe(getattr(obj, f.name))
-            for f in dataclasses.fields(obj)
+            f.name: json_safe(getattr(obj, f.name)) for f in dataclasses.fields(obj)
         }
     if hasattr(obj, "__dict__"):
         return {k: json_safe(v) for k, v in vars(obj).items() if not k.startswith("_")}
     return repr(obj)
 
 
+AgentHooks = dict[str, list[tuple[str | None, str]]]
+
+
 @dataclass(frozen=True)
 class AgentDefinition:
-    """Immutable description of an agent to run."""
+    """Immutable description of an agent to run.
+
+    ``hooks`` maps SDK hook event names to (matcher, shell_command) pairs.
+    Shell commands can use ``{field}`` placeholders interpolated from
+    the hook's ``tool_input`` dict (e.g. ``{file_path}``).
+
+    Example::
+
+        hooks={
+            "PostToolUse": [
+                ("Edit", "uv run ruff check --fix {file_path}"),
+                ("Write", "uv run ruff format {file_path}"),
+            ],
+            "Stop": [
+                (None, "uv run pytest -x -q --tb=short"),
+            ],
+        }
+    """
 
     name: str
     model: str
     system_prompt: str
     tools: list[str] = field(default_factory=list)
     output_schema: type[BaseModel] | None = None
+    hooks: AgentHooks = field(default_factory=dict)
 
 
 @dataclass
