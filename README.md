@@ -1,202 +1,185 @@
 # codemonkeys
 
-AI agent workflows powered by the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-python).
+Skill-driven workflows for Python development in [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Provides structured code review via parallel agents, feature implementation with TDD, and engineering standards — all as Claude Code skills.
 
-Agents do one thing. Coordinators orchestrate them.
+## Prerequisites
 
-## Why not just use Claude Code?
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
+- Python 3.10+
+- [uv](https://docs.astral.sh/uv/) — used for dependency management, virtual environments, and running commands (`uv sync`, `uv run`)
 
-Claude Code is a general-purpose coding assistant. codemonkeys builds specialized, composable agents with controls that CC doesn't offer:
+### Optional Tool Dependencies
 
-- **Per-agent permission control.** CC is one permission mode for the whole session. Here, the coordinator is interactive but its subagents run `dontAsk` — the reviewer is read-only (zero prompts), the fixer writes files silently. You control exactly where the human decision point is.
-- **Right-sized models.** CC uses one model for everything. codemonkeys assigns haiku to mechanical tasks (run ruff, run pytest), sonnet to judgment calls (docs review, coordination), and opus to deep analysis (security audit, code review, implementation). Same quality, fraction of the cost.
-- **Composable coordinators.** A Python coordinator has Python agents. A FastAPI coordinator extends it with FastAPI knowledge. A full-stack coordinator combines Python and JavaScript. Stack expertise like building blocks.
-- **Deterministic workflows.** The coordinator follows structured workflows: plan → approve → implement → verify. No guessing, no skipped steps. The workflow is encoded in the prompt, enforced by agent constraints.
-- **Structured output.** Review agents return typed findings (file, line, severity, category) that downstream agents can act on programmatically.
-- **Unattended agents.** Subagents run `dontAsk` with constrained tools. The coordinator handles all user interaction — subagents just execute.
+Skills run these tools as part of their workflows. Missing tools are skipped gracefully:
 
-## Install
+| Tool | Used by | Install |
+|------|---------|---------|
+| ruff | codemonkeys-python-review, codemonkeys-python-feature | `uv pip install ruff` |
+| pyright | codemonkeys-python-review | `uv pip install pyright` |
+| pytest | codemonkeys-python-review, codemonkeys-python-feature | `uv pip install pytest` |
+| pip-audit | codemonkeys-python-review | `uv pip install pip-audit` |
+| pip-licenses | codemonkeys-python-review | `uv pip install pip-licenses` |
 
-```bash
-git clone https://github.com/FlipYourBits/codemonkeys.git
-cd codemonkeys
-pip install -e ".[dev]"
-```
-
-Requires Python 3.10+ and a Claude API key (`ANTHROPIC_API_KEY`).
-
-## Quick Start
+Or install everything at once:
 
 ```bash
-# Start an interactive Python coordinator session
-.venv/bin/python -m codemonkeys.coordinators.python
-
-# With an initial prompt
-.venv/bin/python -m codemonkeys.coordinators.python "review the code"
-
-# With a specific working directory
-.venv/bin/python -m codemonkeys.coordinators.python --cwd /path/to/project
+uv sync --extra python
 ```
 
-The coordinator is an interactive session — you chat with it, it dispatches agents.
+## Installation
 
-## Project Structure
+Install as a Claude Code plugin by adding it to your project's `.claude/settings.json`:
 
-```
-codemonkeys/
-  agents/           # Individual agent definitions (AgentDefinition instances)
-  coordinators/     # Interactive sessions that dispatch agents
-  prompts/          # Shared prompt fragments used across agents
-```
-
-### Agents
-
-Each file in `agents/` exports a factory function that returns an `AgentDefinition` — a self-contained agent with a prompt, model, tool permissions, and scope. Agents are stateless workers that do one focused job.
-
-#### Reviewers (read-only, safe to run in parallel)
-
-| Factory | Model | What it does |
-|---------|-------|-------------|
-| `make_python_type_checker` | haiku | Runs mypy, returns type errors |
-| `make_python_test_runner` | haiku | Runs pytest, returns results |
-| `make_python_coverage_analyzer` | haiku | Runs pytest --cov, returns uncovered lines |
-| `make_python_dep_auditor` | haiku | Runs pip-audit, returns vulnerabilities |
-| `make_python_quality_reviewer` | opus | Clean code review — naming, design, patterns, complexity |
-| `make_python_security_auditor` | opus | Security vulnerabilities — injection, secrets, auth |
-| `make_readme_reviewer` | sonnet | README accuracy, completeness, stale references |
-| `make_changelog_reviewer` | sonnet | CHANGELOG.md completeness against git history |
-| `make_definition_reviewer` | opus | Reviews AgentDefinition files for correctness |
-
-#### Writers (edit files, run sequentially after user approval)
-
-| Factory | Model | What it does |
-|---------|-------|-------------|
-| `make_python_linter` | haiku | Runs ruff check --fix + ruff format |
-| `make_python_fixer` | opus | Applies targeted fixes for findings from reviewers |
-| `make_python_test_writer` | opus | Writes tests for uncovered code from coverage reports |
-| `make_python_implementer` | opus | Implements features from an approved plan |
-
-### Coordinators
-
-A coordinator is an interactive Claude session with constrained subagents. You chat with the coordinator; it reads code, plans, dispatches agents, and reports back.
-
-**Python Coordinator** — full Python development assistant with agents for linting, testing, type checking, code review, security audit, and implementation.
-
-Built-in workflows:
-- **Implement a feature** → plan → present → approve → dispatch implementer → verify
-- **Quality check** → lint → type check → test → code review → security audit → present findings → fix
-- **Code review** → dispatch reviewers → present findings → fix selected issues
-- **Write tests** → run coverage → write tests for uncovered code → verify
-
-### Composing Coordinators
-
-Coordinators are composable — extend a base coordinator with additional expertise:
-
-```python
-from codemonkeys.coordinators.python import python_coordinator, PYTHON_PROMPT
-from codemonkeys.agents import make_python_linter, make_python_test_runner
-
-def fastapi_coordinator(cwd="."):
-    base = python_coordinator(cwd)
-    agents = dict(base.agents or {})
-    agents["api_tester"] = make_api_tester()
-    return ClaudeAgentOptions(
-        system_prompt=PYTHON_PROMPT + FASTAPI_ADDITIONS,
-        model="sonnet",
-        cwd=cwd,
-        permission_mode="acceptEdits",
-        allowed_tools=["Read", "Glob", "Grep", "Agent"],
-        agents=agents,
-    )
+```json
+{
+  "plugins": [
+    "/absolute/path/to/codemonkeys"
+  ]
+}
 ```
 
-### Using Agents Directly
+Or install for all projects via `~/.claude/settings.json`.
 
-Each agent can also be run standalone via its `__main__` block or dispatched programmatically:
+Restart Claude Code (or start a new conversation) to load the plugin. Skills will be available as `/codemonkeys-python-feature`, `/codemonkeys-python-review`, etc.
 
-```python
-from codemonkeys.agents import make_python_quality_reviewer
-from codemonkeys.runner import AgentRunner
+## Uninstall
 
-runner = AgentRunner()
+Remove the plugin path from your `.claude/settings.json` `plugins` array and restart Claude Code.
 
-# Run with default scope (diff against main)
-result = await runner.run_agent(make_python_quality_reviewer(), "Review the code.")
+## Skills
 
-# Customize scope
-reviewer = make_python_quality_reviewer(scope="repo", path="src/")
-result = await runner.run_agent(reviewer, "Review src/ for issues.")
+### codemonkeys-python-feature
+
+Design-to-implementation workflow for Python features. Walks you from idea to working code through a structured planning process, then dispatches the `codemonkeys-python-implementer` agent to build it with TDD.
+
+**Example — start a new feature:**
+
+```
+/codemonkeys-python-feature add rate limiting to the API
 ```
 
-**Definition Review** — reviews AgentDefinition files for correctness:
+**Example — resume an in-progress plan:**
 
-```bash
-.venv/bin/python -m codemonkeys.agents.review_agent_definition codemonkeys/agents/python_quality_reviewer.py
+```
+/codemonkeys-python-feature
+> Found an in-progress plan: docs/codemonkeys/plans/2026-05-01-rate-limiting.md
+> Continue where we left off, or start fresh?
 ```
 
-## Model Configuration
+**Workflow:**
 
-Agents use model aliases (`"haiku"`, `"sonnet"`, `"opus"`) instead of full model IDs. The CLI resolves these to the correct model for your provider (Anthropic API, Bedrock, or Vertex).
+First, a **resume check** scans `docs/codemonkeys/plans/` for in-progress plans and offers to resume or start fresh. Then:
 
-By default, aliases resolve to the latest version of each model. To pin specific versions (recommended for Bedrock/Vertex), set environment variables:
+1. **Explore context** — creates a plan file in `docs/codemonkeys/plans/`, reads the codebase, and records what it learns.
+2. **Clarifying questions** — asks one question at a time to understand purpose, constraints, and acceptance criteria. Each answer is saved to the plan file.
+3. **Propose approaches** — presents 2-3 approaches with tradeoffs and a recommendation. User picks one.
+4. **Present design** — walks through architecture, components, data flow, and error handling section by section with approval at each step.
+5. **Finalize plan** — rewrites the plan into its final form. Waits for explicit user approval before proceeding.
+6. **Branch check** — if on main/master, suggests a feature branch name and offers to create it.
+7. **Dispatch implementer** — spawns the `codemonkeys-python-implementer` agent with only the plan file as context.
+8. **Verify and format** — runs ruff and pytest after implementation. Fixes test failures (max 2 cycles).
+9. **Report** — summarizes files changed, test results, and anything skipped.
 
-```bash
-export ANTHROPIC_DEFAULT_OPUS_MODEL='us.anthropic.claude-opus-4-7'
-export ANTHROPIC_DEFAULT_SONNET_MODEL='us.anthropic.claude-sonnet-4-6'
-export ANTHROPIC_DEFAULT_HAIKU_MODEL='us.anthropic.claude-haiku-4-5'
+The plan file survives context compaction — if Claude loses the skill context mid-workflow, re-invoking the skill picks up where it left off.
+
+### codemonkeys-python-review
+
+Full Python code review dispatching parallel agents for quality, security, changelog, and README review. Runs mechanical checks via CLI tools. The orchestrator never reads source files directly — agents handle that.
+
+**Example — review changes on the current branch:**
+
+```
+/codemonkeys-python-review
+> 1. Diff (changes vs main)    ← select this
 ```
 
-## Writing New Agents
+**Example — review specific files:**
 
-Create a file in `codemonkeys/agents/` with a constant or factory:
-
-```python
-from __future__ import annotations
-from claude_agent_sdk import AgentDefinition
-
-MY_AGENT = AgentDefinition(
-    description="Use this agent to ...",  # coordinator sees this
-    prompt="...",                          # agent's full instructions
-    model="haiku",                        # model alias
-    tools=["Read", "Glob", "Grep", "Bash"],
-    disallowedTools=["Bash(git push*)", "Bash(git commit*)"],
-    permissionMode="dontAsk",
-)
+```
+/codemonkeys-python-review src/auth.py src/models.py
 ```
 
-For parameterized agents, use a factory function. See existing agents for the pattern.
+**Example — skip categories you don't need:**
 
-See [docs/agent-definition.md](docs/agent-definition.md) for a full reference of all parameters.
+```
+/codemonkeys-python-review
+> Want to skip any of these?
+> skip changelog and README
+```
+
+**Workflow:**
+
+1. **Determine scope** — review a diff vs main, the entire repo, or specific files. Files passed in the command are used directly.
+2. **Ask exclusions** — presents all review categories (file review agents, ruff, pyright, pytest, pip-audit, changelog, README) and asks if any should be skipped.
+3. **Run mechanical checks** — runs ruff (lint), pyright (types), pytest (tests + coverage), and pip-audit (dependency vulnerabilities) directly. Missing tools are skipped gracefully.
+4. **Dispatch review agents** — spawns a `codemonkeys-python-file-reviewer` agent per file (for code quality, security, and Python conventions), plus `codemonkeys-changelog-reviewer` and `codemonkeys-readme-reviewer` agents. All run in parallel.
+5. **Collect and merge findings** — parses structured JSON from each agent, deduplicates against mechanical check results, and sorts by severity.
+6. **Present findings** — groups findings by category with severity counts. Each finding includes file, line, severity, description, and recommendation.
+7. **Ask which to fix** — user chooses all, high-only, specific numbers, or none.
+8. **Apply fixes** — makes the smallest correct change for each approved finding.
+9. **Verify-fix loop** — runs ruff, pyright, and pytest to confirm fixes didn't introduce new issues. Max 2 cycles.
+10. **Report** — summarizes what was fixed, what still fails, and what was skipped.
+
+### Dependency Skills
+
+These skills are loaded automatically by agents and other skills. Not user-invocable.
+
+- **codemonkeys-python-guidelines** — Python conventions: `from __future__ import annotations`, type hints on all public functions, Pydantic BaseModel for structured data, pathlib over os.path, f-strings, context managers, short single-purpose functions, no dead code.
+- **codemonkeys-engineering-mindset** — Core engineering principles: understand before acting, plan first, architecture-first debugging, TDD for bug fixes, KISS, the junior dev test, no hacks, fail loudly at boundaries, test behavior not implementation, severity-based prioritization.
+- **codemonkeys-code-quality** — Language-agnostic quality checklist: naming, design, complexity, structure. Loaded by file-reviewer agents.
+- **codemonkeys-security-observations** — Language-agnostic security checklist: injection, auth, secrets, deserialization. Loaded by file-reviewer agents.
+
+## Agents
+
+### codemonkeys-python-file-reviewer
+
+Reviews a single Python file for code quality, security, and Python conventions. Dispatched by `codemonkeys-python-review` — not invoked directly. Returns structured JSON findings covering naming, design, complexity, Python conventions (type hints, pathlib, etc.), injection, auth, secrets, and deserialization.
+
+### codemonkeys-changelog-reviewer
+
+Compares git history against CHANGELOG.md for accuracy. Dispatched by `codemonkeys-python-review` — not invoked directly. Returns structured JSON findings.
+
+### codemonkeys-readme-reviewer
+
+Verifies README.md claims against the actual codebase. Dispatched by `codemonkeys-python-review` — not invoked directly. Returns structured JSON findings.
+
+### codemonkeys-python-implementer
+
+Implements features, updates, and bug fixes from an approved plan file using TDD. Dispatched by `codemonkeys-python-feature` — not invoked directly.
+
+**Method:**
+
+1. Read the plan and identify every file that needs to change.
+2. Read existing code to understand architecture and patterns.
+3. Write failing tests first, then implement code to make them pass.
+4. Work through remaining changes one file at a time.
+5. Run ruff to format all changed files.
+6. Run the test suite to verify nothing is broken.
+7. Fix any test failures (max 3 cycles, then stop and report).
+
+**Constraints:** implements exactly what the plan describes — no extras, no refactoring, no "improvements." Does not commit or push. If something is ambiguous, makes the simplest choice and notes it. If something is impossible, skips it and explains why.
 
 ## Sandbox
 
-Agents run inside an OS-level filesystem sandbox that restricts writes to the project directory. Call `restrict()` once at startup — all child processes (including SDK-spawned agents) inherit the restriction.
+`sandbox.py` provides OS-level filesystem sandboxing — once activated, the process and all children can only write inside the project directory. Reads are unrestricted. The restriction is irrevocable for the lifetime of the process.
 
-```python
-from codemonkeys.sandbox import restrict
+**API:**
 
-restrict("/path/to/project")
-# From here, writes outside the project directory are denied by the kernel.
-```
+- `restrict(project_dir)` — apply the sandbox. Safe to call multiple times (subsequent calls are no-ops).
+- `is_restricted()` — check whether the sandbox is active.
 
-| Platform | Mechanism | Dependency |
-|----------|-----------|------------|
-| Linux | Landlock LSM (kernel 5.13+) | `landlock` (pure Python) |
-| macOS | sandbox-exec / Seatbelt | none |
-| Windows | Low Integrity Token | none |
+**Platform backends:**
 
-The sandbox is integrated into `AgentRunner` and the coordinator — you don't need to call it manually unless building a custom entry point.
+| Platform | Backend | Requirement |
+|----------|---------|-------------|
+| Linux | Landlock LSM | Kernel 5.13+, `pip install landlock` |
+| macOS | sandbox-exec (Seatbelt) | Built-in (re-execs the process) |
+| Windows | Low Integrity Token | Built-in (re-execs the process) |
 
-## Tests
+On unsupported platforms, `restrict()` logs a warning and returns without applying any restriction.
 
-```bash
-.venv/bin/python -m pytest tests/ -x -q --no-header
-```
-
-## Docs
-
-- [AgentDefinition Parameters](docs/agent-definition.md) — full reference for all agent configuration options
+Write access is always granted to `/tmp`, `/dev`, and Claude CLI state directories (`~/.claude`, `~/.local/share/claude`) in addition to the project directory.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE)

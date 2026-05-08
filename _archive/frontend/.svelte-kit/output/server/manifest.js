@@ -1,0 +1,39 @@
+export const manifest = (() => {
+function __memo(fn) {
+	let value;
+	return () => value ??= (value = fn());
+}
+
+return {
+	appDir: "_app",
+	appPath: "_app",
+	assets: new Set([]),
+	mimeTypes: {},
+	_: {
+		client: {start:"_app/immutable/entry/start.CySKomB2.js",app:"_app/immutable/entry/app.D9KyqNoF.js",imports:["_app/immutable/entry/start.CySKomB2.js","_app/immutable/chunks/C7ILoofT.js","_app/immutable/chunks/CwfvWAfg.js","_app/immutable/chunks/m3w6-02v.js","_app/immutable/entry/app.D9KyqNoF.js","_app/immutable/chunks/CwfvWAfg.js","_app/immutable/chunks/Cj5a7kPE.js","_app/immutable/chunks/BFz-wl6Q.js","_app/immutable/chunks/m3w6-02v.js","_app/immutable/chunks/C0EfeIFy.js","_app/immutable/chunks/CXhweGeG.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		nodes: [
+			__memo(() => import('./nodes/0.js')),
+			__memo(() => import('./nodes/1.js')),
+			__memo(() => import('./nodes/2.js'))
+		],
+		remotes: {
+			
+		},
+		routes: [
+			{
+				id: "/",
+				pattern: /^\/$/,
+				params: [],
+				page: { layouts: [0,], errors: [1,], leaf: 2 },
+				endpoint: null
+			}
+		],
+		prerendered_routes: new Set([]),
+		matchers: async () => {
+			
+			return {  };
+		},
+		server_assets: {}
+	}
+}
+})();

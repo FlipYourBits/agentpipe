@@ -1,3 +1,6 @@
-"""codemonkeys: AI agent workflows powered by the Claude Agent SDK."""
+"""Codemonkeys — minimal agent orchestration framework."""
 
-__version__ = "0.1.0"
+from codemonkeys.core.runner import run_agent
+from codemonkeys.core.types import AgentDefinition, RunResult, TokenUsage
+
+__all__ = ["AgentDefinition", "RunResult", "TokenUsage", "run_agent"]

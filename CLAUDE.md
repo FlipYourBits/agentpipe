@@ -1,35 +1,65 @@
-# codemonkeys
+# Codemonkeys
 
-## Environment
+Python code review and development toolkit powered by Claude Agent SDK. Engineering judgment, workflow, and standards encoded as agent pipelines.
 
-- Python: `.venv/bin/python`
-- Run tests: `.venv/bin/python -m pytest tests/ -x -q --no-header`
+## Project Structure
 
-## Architecture
+```
+codemonkeys/
+  core/
+    agents/                     # Agent factories (return AgentDefinition)
+    prompts/                    # Shared prompt templates (quality, security, guidelines)
+    analysis.py                 # AST-based file analysis
+    runner.py                   # AgentRunner with Rich live display
+  artifacts/schemas/            # Pydantic schemas (findings, architecture, results)
+  workflows/                    # State-machine orchestration (review, implement)
+  run_review.py                 # CLI review pipeline (standalone)
+tests/                          # Test suite
+docs/codemonkeys/
+  specs/                        # Design specs
+  plans/                        # Approved feature plans
+.claude/
+  settings.local.json           # Dev permissions
+```
 
-- Live by occam's razor — the simplest solution is usually the best. A junior dev should look at this code and immediately understand how it works and how to extend it.
-- Each agent has a single responsibility and never depends on another agent.
-- Agents are `AgentDefinition` instances in `codemonkeys/agents/`. Parameterized agents use a factory function + default constant. Mechanical agents (lint, test, type check, dep audit) are plain constants.
-- Coordinators in `codemonkeys/coordinators/` are interactive sessions that dispatch agents. A coordinator is a factory function returning `ClaudeAgentOptions` with agents registered. The coordinator's system prompt encodes workflows (e.g., "implement feature" → plan → approve → implement → verify). Uses `ClaudeSDKClient` for multi-turn conversation.
-- Coordinators are composable: a FastAPI coordinator extends the Python coordinator with additional prompt and agents.
-- `codemonkeys/runner.py` provides `AgentRunner` for running individual agents with a Rich live display.
-- Structured output uses Pydantic models + `output_format` on `ClaudeAgentOptions`. This only works at the top-level `query()` call, not on subagents dispatched by a coordinator.
-- `codemonkeys/prompts/` holds reusable prompt fragments as string constants (e.g., `PYTHON_GUIDELINES`, `PYTHON_SOURCE_FILTER`, `PYTHON_CMD`). Generic instructions that apply across multiple agents belong here — agent-specific logic stays in the agent's own prompt. Agents import and interpolate them via f-string.
-- Use `PYTHON_CMD` (`sys.executable`) for agent prompts that reference the Python interpreter. Never hardcode `python` or `.venv/bin/python`.
+## How to Work Here
 
-## Code guidelines
+**Run review pipeline:**
+```
+uv run python -m codemonkeys.run_review --diff
+uv run python -m codemonkeys.run_review --repo
+uv run python -m codemonkeys.run_review --files path/a.py path/b.py
+```
 
-- Use `from __future__ import annotations` in every file.
-- Type-hint every public function and method.
-- Use `Literal` types for constrained string params (e.g., `scope: Literal["diff", "repo"]`).
-- Use Pydantic `BaseModel` for structured data, not dicts.
-- Use `pathlib.Path` over `os.path`.
-- Use f-strings, not `.format()` or `%`.
-- Keep functions short and single-purpose. If a function exceeds ~40 lines, extract a helper.
-- Name things for what they mean, not what they are. `parsed_records` over `data`.
-- Don't catch `Exception` broadly — catch the narrowest type you can name.
-- Don't write defensive code for situations that can't happen given the call graph.
-- Don't add comments that restate the code. Comments explain *why*.
-- Match the existing codebase style over personal preferences.
-- Prefer pure functions. Side effects belong at the edges.
-- No dead code, no commented-out blocks, no `# TODO` without a concrete plan.
+**Lint/format:**
+```
+ruff check --fix . && ruff format .
+```
+
+**Type check:**
+```
+pyright .
+```
+
+## Architecture Decisions
+
+- **Workflows coordinate, agents implement.** `implement` workflow designs and gets approval; `python_implementer` agent writes code via TDD. The plan file is the contract between them.
+- **Hard gates before action.** The implement workflow does not dispatch the implementer until the user explicitly approves the plan.
+- **Agent-based review pipeline.** `run_review.py` dispatches per-file reviewer agents in parallel (batched up to 3 files, model-tiered: haiku for tests, sonnet for prod), then an architecture reviewer (opus). Agents return structured JSON findings via output schemas.
+- **Reusable prompt templates.** `code_quality`, `security_observations`, and `python_guidelines` are shared prompts loaded into agent system prompts. When adding a new language, create new guidelines and a file-reviewer agent — the core checklists are shared.
+- **Debug logging.** Every agent run writes a `.log` (raw JSONL events) and `.md` (readable system prompt + user prompt + structured output) to `.codemonkeys/logs/<timestamp>/`.
+
+## Agents
+
+- `python_file_reviewer` — reviews 1-3 Python files for quality/security (sonnet or haiku)
+- `architecture_reviewer` — cross-file design review (opus)
+- `python_code_fixer` — applies fixes from review findings (sonnet)
+- `changelog_reviewer` — reviews CHANGELOG.md vs git history (haiku)
+- `readme_reviewer` — verifies README.md claims (sonnet)
+- `python_implementer` — TDD implementation from plan (opus)
+
+## Detailed Docs (Read When Relevant)
+
+- `docs/codemonkeys/specs/` — design specs
+- `docs/codemonkeys/plans/` — feature plans
+- `README.md` — installation, usage
