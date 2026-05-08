@@ -40,9 +40,6 @@ dev = [
     "pytest-asyncio>=0.23",
 ]
 
-[project.scripts]
-codemonkeys = "codemonkeys.run_review:main"
-
 [project.urls]
 Homepage = "https://github.com/FlipYourBits/codemonkeys"
 

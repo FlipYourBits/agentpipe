@@ -5,7 +5,7 @@ def test_make_review_auditor_returns_definition():
     agent = make_review_auditor(
         trace="[0.0s] TOOL: Read(a.py)",
         findings_json='{"results": []}',
-        reviewer_name="python_file_reviewer:a.py",
+        reviewer_name="python_reviewer:a.py",
         reviewer_model="sonnet",
         reviewer_tools="Read, Grep",
         reviewer_prompt="You review code.",
@@ -33,12 +33,12 @@ def test_make_review_auditor_prompt_contains_reviewer_config():
     agent = make_review_auditor(
         trace="(empty trace)",
         findings_json="null",
-        reviewer_name="python_file_reviewer:a.py",
+        reviewer_name="python_reviewer:a.py",
         reviewer_model="haiku",
         reviewer_tools="Read, Grep",
         reviewer_prompt="You review Python files.",
     )
-    assert "python_file_reviewer:a.py" in agent.system_prompt
+    assert "python_reviewer:a.py" in agent.system_prompt
     assert "haiku" in agent.system_prompt
     assert "Read, Grep" in agent.system_prompt
     assert "You review Python files." in agent.system_prompt

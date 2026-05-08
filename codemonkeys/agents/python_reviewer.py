@@ -32,7 +32,7 @@ def _is_test_file(path: str) -> bool:
     return "/tests/" in path or path.startswith("tests/") or path.endswith("_test.py")
 
 
-def make_python_file_reviewer(
+def make_python_reviewer(
     files: list[str],
     *,
     model: str = "sonnet",
@@ -52,7 +52,7 @@ def make_python_file_reviewer(
     checklist_block = "\n\n".join(checklists)
 
     return AgentDefinition(
-        name=f"python_file_reviewer:{','.join(f.split('/')[-1] for f in files)}",
+        name=f"python_reviewer:{','.join(f.split('/')[-1] for f in files)}",
         model=model,
         system_prompt=f"""\
 You review Python files for code quality and security issues.

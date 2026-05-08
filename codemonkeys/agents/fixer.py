@@ -1,22 +1,12 @@
-"""Generic fixer agent — applies fixes from any structured findings."""
+"""Fixer agent — applies fixes from any list of items."""
 
 from __future__ import annotations
+
+from typing import Any, Callable
 
 from pydantic import BaseModel
 
 from codemonkeys.core.types import AgentDefinition
-
-
-class FixItem(BaseModel):
-    """Universal finding format — works with any source."""
-
-    file: str | None = None
-    line: int | None = None
-    severity: str | None = None
-    category: str | None = None
-    title: str
-    description: str
-    suggestion: str | None = None
 
 
 class FixResult(BaseModel):
@@ -27,24 +17,25 @@ class FixResult(BaseModel):
     summary: str
 
 
+def _default_formatter(item: Any) -> str:
+    if isinstance(item, str):
+        return item
+    if isinstance(item, BaseModel):
+        d = item.model_dump(exclude_none=True)
+        return " | ".join(f"{k}: {v}" for k, v in d.items())
+    if isinstance(item, dict):
+        return " | ".join(f"{k}: {v}" for k, v in item.items() if v is not None)
+    return str(item)
+
+
 def make_fixer(
-    items: list[FixItem],
+    items: list[Any],
     *,
+    formatter: Callable[[Any], str] | None = None,
     model: str = "opus",
 ) -> AgentDefinition:
-    """Applies fixes from structured findings to the codebase."""
-    findings_text = ""
-    for i, item in enumerate(items, 1):
-        loc = ""
-        if item.file:
-            loc = f" in `{item.file}`"
-            if item.line:
-                loc += f" at line {item.line}"
-        sev = f" [{item.severity}]" if item.severity else ""
-        suggestion = f"\n   Suggestion: {item.suggestion}" if item.suggestion else ""
-        findings_text += (
-            f"{i}. **{item.title}**{sev}{loc}\n   {item.description}{suggestion}\n\n"
-        )
+    fmt = formatter or _default_formatter
+    numbered = "\n".join(f"{i}. {fmt(item)}" for i, item in enumerate(items, 1))
 
     return AgentDefinition(
         name="fixer",
@@ -54,7 +45,7 @@ You are a code fixer. Apply the fixes described below to the codebase.
 
 ## Findings to Fix
 
-{findings_text}
+{numbered}
 
 ## Automated Checks
 
