@@ -48,9 +48,7 @@ def test_stdout_printer_tool_call():
 def test_stdout_printer_tool_denied():
     printer, buf = _capture_printer()
     printer(
-        ToolDenied(
-            agent_name="r", timestamp=0.0, tool_name="Bash", command="rm -rf /"
-        )
+        ToolDenied(agent_name="r", timestamp=0.0, tool_name="Bash", command="rm -rf /")
     )
     output = buf.getvalue()
     assert "DENIED" in output
@@ -84,18 +82,14 @@ def test_stdout_printer_agent_completed():
         cost_usd=0.01,
         duration_ms=5000,
     )
-    printer(
-        AgentCompleted(agent_name="reviewer", timestamp=0.0, result=result)
-    )
+    printer(AgentCompleted(agent_name="reviewer", timestamp=0.0, result=result))
     output = buf.getvalue()
     assert "done" in output.lower() or "reviewer" in output
 
 
 def test_stdout_printer_agent_error():
     printer, buf = _capture_printer()
-    printer(
-        AgentError(agent_name="reviewer", timestamp=0.0, error="kaboom")
-    )
+    printer(AgentError(agent_name="reviewer", timestamp=0.0, error="kaboom"))
     output = buf.getvalue()
     assert "kaboom" in output
 

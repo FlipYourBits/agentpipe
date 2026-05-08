@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from rich.console import Console
 from rich.live import Live
-from rich.markup import escape
 from rich.spinner import Spinner
 
 from codemonkeys.core.events import (
     AgentCompleted,
     AgentError,
     AgentStarted,
+    CheckResult,
     Event,
     EventHandler,
     RateLimitHit,
@@ -96,6 +96,16 @@ def make_stdout_printer(console: Console | None = None) -> EventHandler:
                 f"  [red]{name} DENIED: {event.tool_name}({event.command[:80]})[/red]"
             )
 
+        elif isinstance(event, CheckResult):
+            style = "green" if event.passed else "red"
+            label = "PASS" if event.passed else "FAIL"
+            _console.print(
+                f"  [{style}]{name} check {label}: {event.command[:100]}[/{style}]"
+            )
+            if event.output and not event.passed:
+                for line in event.output.splitlines()[:10]:
+                    _console.print(f"    [dim]{line}[/dim]")
+
         elif isinstance(event, TokenUpdate):
             _turns[name] = _turns.get(name, 0) + 1
             _total_cost += event.cost_usd
@@ -127,9 +137,7 @@ def make_stdout_printer(console: Console | None = None) -> EventHandler:
                 tool = _last_tool.pop(name, "?")
                 hint = format_tool_result(event.data)
                 suffix = f": {hint}" if hint else ""
-                _console.print(
-                    f"  [dim]{name} << {tool} result{suffix}[/dim]"
-                )
+                _console.print(f"  [dim]{name} << {tool} result{suffix}[/dim]")
             elif event.message_type == "ResultMessage":
                 data = event.data
                 cost_val = data.get("total_cost_usd")

@@ -24,6 +24,7 @@ from codemonkeys.core.events import (
     AgentCompleted,
     AgentError,
     AgentStarted,
+    CheckResult,
     EventCollector,
     EventHandler,
     RateLimitHit,
@@ -34,7 +35,8 @@ from codemonkeys.core.events import (
     ToolDenied,
     TokenUpdate,
 )
-from codemonkeys.core.hooks import build_tool_hooks
+from codemonkeys.core.hooks import build_check_hooks, build_permission_hooks, merge_hooks
+from codemonkeys.core.sandbox import restrict
 from codemonkeys.core.types import AgentDefinition, RunResult, TokenUsage, json_safe
 
 _log = logging.getLogger(__name__)
@@ -65,15 +67,17 @@ def _estimate_cost(usage: dict[str, int], model: str) -> float:
 _json_safe = json_safe
 
 
+_TOOL_PATTERN_RE = re.compile(r"^(\w+)\(.+\)$")
+
+
 def _extract_simple_tools(tools: list[str]) -> list[str]:
-    """Get tool names suitable for SDK allowed_tools (no Bash patterns)."""
-    result = []
+    """Get tool names suitable for SDK allowed_tools (no Tool(pattern) specs)."""
+    result: list[str] = []
     for t in tools:
-        if re.match(r"^Bash\(.+\)$", t):
-            if "Bash" not in result:
-                result.append("Bash")
-        else:
-            result.append(t)
+        m = _TOOL_PATTERN_RE.match(t)
+        name = m.group(1) if m else t
+        if name not in result:
+            result.append(name)
     return result
 
 
@@ -83,6 +87,7 @@ async def run_agent(
     on_event: EventHandler | None = None,
 ) -> RunResult:
     """Run a single agent and return its result."""
+    restrict(".")
     collector = EventCollector()
 
     def _combined_emit(event: Any) -> None:
@@ -91,7 +96,9 @@ async def run_agent(
             on_event(event)
 
     now = time.time()
-    _combined_emit(AgentStarted(agent_name=agent.name, timestamp=now, model=agent.model))
+    _combined_emit(
+        AgentStarted(agent_name=agent.name, timestamp=now, model=agent.model)
+    )
 
     start_time = time.monotonic()
 
@@ -119,13 +126,32 @@ async def run_agent(
     allowed = list(sdk_tools)
     if output_format:
         allowed.append("StructuredOutput")
+    # Build on_check callback for check hook observability
+    def _on_check(hook_event: str, command: str, passed: bool, output: str) -> None:
+        _combined_emit(
+            CheckResult(
+                agent_name=agent.name,
+                timestamp=time.time(),
+                hook_event=hook_event,
+                command=command,
+                passed=passed,
+                output=output,
+            ),
+        )
+
+    hooks = merge_hooks(
+        build_permission_hooks(agent.tools, on_deny=_on_deny),
+        build_check_hooks(agent.hooks, agent_name=agent.name, on_check=_on_check)
+        if agent.hooks
+        else None,
+    )
     options = ClaudeAgentOptions(
         system_prompt=agent.system_prompt,
         model=agent.model,
-        permission_mode="bypassPermissions",
+        permission_mode="dontAsk",
         tools=sdk_tools,
         allowed_tools=allowed,
-        hooks=build_tool_hooks(agent.tools, on_deny=_on_deny),
+        hooks=hooks,
         output_format=output_format,
         mcp_servers={},
         plugins=[],

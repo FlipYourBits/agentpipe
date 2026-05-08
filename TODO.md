@@ -1,1 +1,0 @@
-- does our code review use pyright for proper type hint checking? do we have anything for code coverage in tests? and do we have anything that ensures our tests are QUALITY tests that actually test the code rather than mocking a bunch of stuff to just make the test pass?

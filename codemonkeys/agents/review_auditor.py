@@ -46,7 +46,9 @@ def auditor_from_result(
         raise ValueError("RunResult has no agent_def — cannot audit")
     return make_review_auditor(
         trace=format_event_trace(result.events),
-        findings_json=result.output.model_dump_json(indent=2) if result.output else "null",
+        findings_json=result.output.model_dump_json(indent=2)
+        if result.output
+        else "null",
         reviewer_name=ad.name,
         reviewer_model=ad.model,
         reviewer_tools=", ".join(ad.tools) if ad.tools else "(none)",

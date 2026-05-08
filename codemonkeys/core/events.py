@@ -92,6 +92,16 @@ class RawMessage(Event):
 
 
 @dataclass
+class CheckResult(Event):
+    """Emitted when an automated check runs via a hook."""
+
+    hook_event: str
+    command: str
+    passed: bool
+    output: str
+
+
+@dataclass
 class RateLimitHit(Event):
     """Emitted when the SDK reports a rate limit."""
 

@@ -1,1 +1,0 @@
-"""Codemonkeys web dashboard."""

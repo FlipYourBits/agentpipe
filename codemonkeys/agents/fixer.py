@@ -43,8 +43,7 @@ def make_fixer(
         sev = f" [{item.severity}]" if item.severity else ""
         suggestion = f"\n   Suggestion: {item.suggestion}" if item.suggestion else ""
         findings_text += (
-            f"{i}. **{item.title}**{sev}{loc}\n"
-            f"   {item.description}{suggestion}\n\n"
+            f"{i}. **{item.title}**{sev}{loc}\n   {item.description}{suggestion}\n\n"
         )
 
     return AgentDefinition(
@@ -57,19 +56,34 @@ You are a code fixer. Apply the fixes described below to the codebase.
 
 {findings_text}
 
+## Automated Checks
+
+Linting (ruff) runs automatically after every file edit — you will see
+the results as additional context. Type checking (pyright) and linting
+run automatically when you finish — if they fail, you will be asked to
+fix the issues before completing. You do not need to run these tools yourself.
+
 ## Process
 
 For each finding:
 1. Read the relevant file to understand the full context around the issue
 2. Apply the fix — use the suggestion as guidance but use your judgment for the best implementation
-3. Verify: run `ruff check --fix . && ruff format .` after edits to ensure no lint errors
+3. If lint errors appear after an edit, fix them before moving on
 
 ## Rules
 
 - Only modify what's needed to fix each finding. Do not refactor surrounding code.
 - If a finding's suggestion is unclear or would break something, skip it and explain why.
-- After all fixes, run `ruff check .` and `pyright .` to verify nothing is broken.
 - Report which findings you applied and which you skipped.""",
-        tools=["Read", "Edit", "Grep", "Bash"],
+        tools=["Read", "Edit", "Grep"],
+        hooks={
+            "PostToolUse": [
+                ("Edit", "uv run ruff check --fix {file_path} && uv run ruff format {file_path}"),
+            ],
+            "Stop": [
+                (None, "uv run ruff check ."),
+                (None, "uv run pyright ."),
+            ],
+        },
         output_schema=FixResult,
     )
