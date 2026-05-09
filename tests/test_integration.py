@@ -5,9 +5,9 @@ from unittest.mock import patch
 
 import pytest
 
-from codemonkeys.agents.python_file_reviewer import (
+from codemonkeys.agents.python_reviewer import (
     FileFindings,
-    make_python_file_reviewer,
+    make_python_reviewer,
 )
 from codemonkeys.core.events import AgentCompleted, AgentStarted, Event
 from codemonkeys.core.runner import run_agent
@@ -44,8 +44,8 @@ def _make_fake_query(findings: list[dict]):
 async def test_parallel_agents_with_display():
     """Run multiple agents in parallel, collect results, verify composition."""
     agents = [
-        make_python_file_reviewer(["src/a.py"], model="haiku"),
-        make_python_file_reviewer(["src/b.py"], model="haiku"),
+        make_python_reviewer("src/a.py", model="haiku"),
+        make_python_reviewer("src/b.py", model="haiku"),
     ]
 
     findings_a = [

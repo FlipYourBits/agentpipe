@@ -209,6 +209,9 @@ tempCodeRunnerFile.py
 docs/codemonkeys/runs/
 review.json
 
+# audit results
+audit/results/
+
 # superpowers skill artifacts
 docs/superpowers/
 

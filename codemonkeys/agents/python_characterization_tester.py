@@ -98,7 +98,7 @@ Return a JSON object with:
         ],
         hooks={
             "SubagentStart": [
-                (None, "uv run pytest --cov=codemonkeys --cov-report=term-missing -q --no-header"),
+                (None, "uv run pytest --cov=. --cov-report=term-missing -q --no-header"),
             ],
             "Stop": [
                 (None, "uv run pytest -x -q --tb=short --no-header"),

@@ -37,9 +37,15 @@ from codemonkeys.core.events import (
 )
 from codemonkeys.core.hooks import build_check_hooks, build_permission_hooks, merge_hooks
 from codemonkeys.core.sandbox import restrict
-from codemonkeys.core.types import AgentDefinition, RunResult, TokenUsage, json_safe
+from codemonkeys.core.types import AgentDefinition, RunResult, TokenUsage, json_safe, make_log_dir
 
 _log = logging.getLogger(__name__)
+
+_MODEL_IDS: dict[str, str] = {
+    "opus": "claude-opus-4-6",
+    "sonnet": "claude-sonnet-4-6",
+    "haiku": "claude-haiku-4-5-20251001",
+}
 
 _PRICING: dict[str, dict[str, float]] = {
     "opus": {"input": 5.0, "output": 25.0, "cache_read": 0.50, "cache_creation": 6.25},
@@ -85,6 +91,7 @@ async def run_agent(
     agent: AgentDefinition,
     prompt: str,
     on_event: EventHandler | None = None,
+    log_dir: Path | None = None,
 ) -> RunResult:
     """Run a single agent and return its result."""
     restrict(".")
@@ -147,7 +154,7 @@ async def run_agent(
     )
     options = ClaudeAgentOptions(
         system_prompt=agent.system_prompt,
-        model=agent.model,
+        model=_MODEL_IDS.get(agent.model, agent.model),
         permission_mode="dontAsk",
         tools=sdk_tools,
         allowed_tools=allowed,
@@ -320,5 +327,11 @@ async def run_agent(
         _combined_emit(
             AgentCompleted(agent_name=agent.name, timestamp=time.time(), result=result),
         )
+
+    try:
+        dest = log_dir if log_dir else make_log_dir(agent.name)
+        result.save_run(dest)
+    except Exception:
+        _log.debug("Failed to save run log for %s", agent.name, exc_info=True)
 
     return result

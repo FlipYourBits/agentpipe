@@ -1,0 +1,5 @@
+- join certain agents together, for example python_implementer and fixer both just take a spec of some kind and implement them...
+- figure out the optimal path for agents that review files etc...we don't want multiple agents reviewing the same files. 
+- is there an agent that checks test quality?
+- pre computed AST that gets passed into prompt for architecture reviewer and ditch the hook?
+- we need to standardize the inputs and scope of our agents to make it easier to understand (see AGENTS_ARCHITECURE.md) ...also we need to rename fixer and the architecture reviewer to something python specific. 

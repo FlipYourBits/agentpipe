@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import fnmatch
+import os
 import re
 from typing import Any
 
@@ -39,6 +40,22 @@ from claude_agent_sdk.types import HookEvent, SyncHookJSONOutput
 from codemonkeys.core.types import AgentHooks
 
 _TOOL_PATTERN_RE = re.compile(r"^(\w+)\((.+)\)$")
+
+_PATH_FIELDS = {"file_path", "path"}
+
+
+def _matches_pattern(value: str, pattern: str, field: str) -> bool:
+    """Match *value* against *pattern*, trying cwd-relative for path fields."""
+    if fnmatch.fnmatch(value, pattern):
+        return True
+    if field in _PATH_FIELDS:
+        try:
+            rel = os.path.relpath(value)
+        except ValueError:
+            return False
+        return fnmatch.fnmatch(rel, pattern)
+    return False
+
 
 _TOOL_INPUT_FIELDS: dict[str, str] = {
     "Bash": "command",
@@ -95,7 +112,8 @@ def check_tool_allowed(
     value = _get_match_value(tool_name, tool_input)
     if not value:
         return False
-    return any(fnmatch.fnmatch(value, p) for p in patterns)
+    field = _TOOL_INPUT_FIELDS.get(tool_name, "")
+    return any(_matches_pattern(value, p, field) for p in patterns)
 
 
 OnDenyCallback = Any  # (tool_name: str, detail: str) -> None
@@ -116,7 +134,7 @@ def _make_hook_fn(
     ) -> SyncHookJSONOutput:
         value = str(hook_input["tool_input"].get(field, "")).strip()  # type: ignore[typeddict-item]
         for pattern in patterns:
-            if fnmatch.fnmatch(value, pattern):
+            if _matches_pattern(value, pattern, field):
                 return {
                     "hookSpecificOutput": {
                         "hookEventName": "PreToolUse",

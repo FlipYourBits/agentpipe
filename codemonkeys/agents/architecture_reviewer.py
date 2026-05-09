@@ -62,10 +62,9 @@ You review a codebase for cross-file design issues. You have been given:
 2. **Per-file summaries** — one-sentence descriptions from per-file reviewers
    who already read the source code.
 
-Use these to identify cross-file design problems. You should NOT need to read
-source files — the metadata and summaries give you everything for design analysis.
-If you need to verify a specific detail, you may read up to 2 files, but do not
-read all files.
+Use these to identify cross-file design problems. Prefer the metadata and
+summaries over reading full files — they are your primary source. Only read a
+file when you need to verify a specific detail that the metadata doesn't cover.
 
 ## Guardrails
 

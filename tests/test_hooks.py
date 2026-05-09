@@ -317,3 +317,17 @@ def test_merge_hooks_concatenates_same_event():
 
 def test_merge_hooks_all_none():
     assert merge_hooks(None, None) is None
+
+
+# --- check_tool_allowed: absolute paths matched against relative patterns ---
+
+
+def test_absolute_path_matches_relative_pattern(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    allowed = ["Read", "Edit(tests/*)", "Write(tests/*)"]
+    abs_test = str(tmp_path / "tests" / "test_foo.py")
+    abs_src = str(tmp_path / "src" / "main.py")
+    assert check_tool_allowed("Edit", {"file_path": abs_test}, allowed) is True
+    assert check_tool_allowed("Write", {"file_path": abs_test}, allowed) is True
+    assert check_tool_allowed("Edit", {"file_path": abs_src}, allowed) is False
+    assert check_tool_allowed("Write", {"file_path": abs_src}, allowed) is False

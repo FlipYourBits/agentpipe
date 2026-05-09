@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "codemonkeys"
-version = "0.3.0"
+version = "0.1.0"
 description = "AI agent workflows powered by the Claude Agent SDK."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-authors = [{ name = "FlipYourBits" }]
+authors = [{ name = "James Whiteley IV" }]
 keywords = ["claude", "agent-sdk", "anthropic", "ai-agents"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -39,9 +39,6 @@ dev = [
     "codemonkeys[python]",
     "pytest-asyncio>=0.23",
 ]
-
-[project.scripts]
-codemonkeys = "codemonkeys.run_review:main"
 
 [project.urls]
 Homepage = "https://github.com/FlipYourBits/codemonkeys"
