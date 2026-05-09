@@ -10,7 +10,6 @@ from rich.table import Table
 
 from codemonkeys.agents.fixer import FixResult
 from codemonkeys.agents.python_reviewer import FileFindings, Finding
-from codemonkeys.agents.review_auditor import ReviewAudit
 from codemonkeys.core.types import RunResult
 from codemonkeys.display.formatting import severity_style
 
@@ -77,70 +76,6 @@ def print_review_summary(results: list[RunResult]) -> list[Finding]:
         console.print(table)
 
     return all_findings
-
-
-def print_audit_summary(audit_results: list[tuple[str, RunResult]]) -> None:
-    verdicts: list[str] = []
-    total_cost = 0.0
-    for _, r in audit_results:
-        total_cost += r.cost_usd
-        if isinstance(r.output, ReviewAudit):
-            verdicts.append(r.output.verdict.lower())
-
-    passes = verdicts.count("pass")
-    warns = verdicts.count("warn")
-    fails = verdicts.count("fail")
-
-    console.print()
-    console.rule(
-        f"[bold]AUDIT[/bold] — "
-        f"[bold]{len(audit_results)} audit(s)[/bold] "
-        f"([green]{passes} pass[/green], [yellow]{warns} warn[/yellow], "
-        f"[red]{fails} fail[/red]) "
-        f"| Cost: ${total_cost:.4f}",
-        style="magenta",
-    )
-
-    for reviewer_name, result in audit_results:
-        if result.error:
-            console.print(f"\n  [red]{reviewer_name} — audit error: {result.error}[/red]")
-            continue
-        if not isinstance(result.output, ReviewAudit):
-            console.print(f"\n  [yellow]{reviewer_name} — no structured audit output[/yellow]")
-            continue
-
-        audit = result.output
-        vstyle = {"pass": "bold green", "warn": "bold yellow", "fail": "bold red"}.get(
-            audit.verdict.lower(), "white"
-        )
-
-        table = Table(
-            title=f"{reviewer_name} — [{vstyle}]{audit.verdict.upper()}[/{vstyle}]",
-            title_style="bold", caption=audit.summary, caption_style="dim",
-            show_lines=True, expand=True, highlight=False,
-        )
-        table.add_column("Sev", width=6, justify="center", no_wrap=True)
-        table.add_column("Category", width=14, no_wrap=True)
-        table.add_column("Finding", ratio=3)
-        table.add_column("Suggestion", ratio=2)
-
-        if audit.results:
-            for f in sorted(
-                audit.results,
-                key=lambda f: SEVERITY_ORDER.get(f.severity.lower(), 9),
-            ):
-                sev_style = severity_style(f.severity)
-                sev = f"[{sev_style}]{f.severity.upper()}[/{sev_style}]"
-                finding_text = f"[bold]{escape(f.title)}[/bold]"
-                if f.description:
-                    finding_text += f"\n{escape(f.description)}"
-                suggestion = escape(f.suggestion) if f.suggestion else ""
-                table.add_row(sev, f.category, finding_text, suggestion)
-        else:
-            table.add_row("[green]--[/green]", "--", "[green]No issues found[/green]", "")
-
-        console.print()
-        console.print(table)
 
 
 def print_fix_result(result: RunResult) -> None:

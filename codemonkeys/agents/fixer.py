@@ -66,7 +66,7 @@ For each finding:
 - Only modify what's needed to fix each finding. Do not refactor surrounding code.
 - If a finding's suggestion is unclear or would break something, skip it and explain why.
 - Report which findings you applied and which you skipped.""",
-        tools=["Read", "Edit", "Grep"],
+        tools=["Read", "Edit", "Write", "Grep"],
         hooks={
             "PostToolUse": [
                 ("Edit", "uv run ruff check --fix {file_path} && uv run ruff format {file_path}"),

@@ -44,8 +44,8 @@ def _make_fake_query(findings: list[dict]):
 async def test_parallel_agents_with_display():
     """Run multiple agents in parallel, collect results, verify composition."""
     agents = [
-        make_python_reviewer(["src/a.py"], model="haiku"),
-        make_python_reviewer(["src/b.py"], model="haiku"),
+        make_python_reviewer("src/a.py", model="haiku"),
+        make_python_reviewer("src/b.py", model="haiku"),
     ]
 
     findings_a = [

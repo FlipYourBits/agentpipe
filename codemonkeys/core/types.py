@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -98,6 +99,57 @@ class RunResult:
         path = directory / f"{name}.json"
         path.write_text(self.output.model_dump_json(indent=2) + "\n")
         return path
+
+    def save_run(self, directory: str | Path) -> Path:
+        """Write a comprehensive run log (agent config + results + events).
+
+        Includes everything needed to audit the run after the fact:
+        system prompt, tools, hooks, structured output, event trace,
+        token usage, cost, and duration.
+        """
+        ad = self.agent_def
+        directory = Path(directory)
+        directory.mkdir(parents=True, exist_ok=True)
+        name = re.sub(r"[^\w\-.]", "_", ad.name) if ad else "unknown"
+
+        data: dict[str, Any] = {
+            "agent": {
+                "name": ad.name if ad else "unknown",
+                "model": ad.model if ad else "unknown",
+                "system_prompt": ad.system_prompt if ad else "",
+                "tools": ad.tools if ad else [],
+                "hooks": ad.hooks if ad else {},
+                "output_schema": ad.output_schema.__name__
+                if ad and ad.output_schema
+                else None,
+            },
+            "result": {
+                "output": self.output.model_dump() if self.output else None,
+                "text": self.text,
+                "error": self.error,
+            },
+            "tokens": {
+                "input": self.usage.input_tokens,
+                "output": self.usage.output_tokens,
+                "cache_read": self.usage.cache_read_tokens,
+                "cache_creation": self.usage.cache_creation_tokens,
+            },
+            "cost_usd": self.cost_usd,
+            "duration_seconds": self.duration_ms / 1000,
+            "events": [_serialize_event(e) for e in self.events],
+        }
+
+        path = directory / f"{name}.json"
+        path.write_text(json.dumps(data, indent=2, default=str) + "\n")
+        return path
+
+
+def _serialize_event(event: Any) -> dict[str, Any]:
+    """Convert an event dataclass to a JSON-serializable dict."""
+    data: dict[str, Any] = {"type": type(event).__name__}
+    for key, value in vars(event).items():
+        data[key] = json_safe(value)
+    return data
 
 
 def make_log_dir(label: str = "") -> Path:

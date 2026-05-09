@@ -33,33 +33,30 @@ def _is_test_file(path: str) -> bool:
 
 
 def make_python_reviewer(
-    files: list[str],
+    file: str,
     *,
     model: str = "sonnet",
 ) -> AgentDefinition:
-    """Reviews Python files for code quality and security issues."""
-    file_list = "\n".join(f"- `{f}`" for f in files)
-
-    has_test_files = any(_is_test_file(f) for f in files)
-    has_prod_files = any(not _is_test_file(f) for f in files)
+    """Reviews a single Python file for code quality and security issues."""
+    is_test = _is_test_file(file)
 
     checklists: list[str] = []
-    if has_prod_files:
+    if not is_test:
         checklists.extend([CODE_QUALITY, SECURITY_OBSERVATIONS, RESILIENCE_REVIEW])
-    if has_test_files:
+    if is_test:
         checklists.append(TEST_QUALITY)
 
     checklist_block = "\n\n".join(checklists)
 
     return AgentDefinition(
-        name=f"python_reviewer:{','.join(f.split('/')[-1] for f in files)}",
+        name=f"python_reviewer:{file.split('/')[-1]}",
         model=model,
         system_prompt=f"""\
 You review Python files for code quality and security issues.
 
-## Files to Review
+## File to Review
 
-{file_list}
+`{file}`
 
 {PYTHON_GUIDELINES}
 
