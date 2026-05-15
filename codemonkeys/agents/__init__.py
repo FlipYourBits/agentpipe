@@ -14,6 +14,10 @@ from codemonkeys.core.types import AgentDefinition
 
 REVIEWERS: dict[str, Callable[[str], AgentDefinition]] = {
     ".py": make_code_reviewer,
+    ".js": make_code_reviewer,
+    ".jsx": make_code_reviewer,
+    ".ts": make_code_reviewer,
+    ".tsx": make_code_reviewer,
 }
 
 

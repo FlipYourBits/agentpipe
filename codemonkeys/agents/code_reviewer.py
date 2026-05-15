@@ -9,6 +9,7 @@ from codemonkeys.core.types import AgentDefinition, FileReviewResult
 from codemonkeys.prompts import (
     CODE_REVIEW,
     DESIGN_REVIEW,
+    JAVASCRIPT_GUIDELINES,
     PERFORMANCE_REVIEW,
     PYTHON_GUIDELINES,
     RESILIENCE_REVIEW,
@@ -22,6 +23,10 @@ DEFAULT_REVIEWER_MODEL = "sonnet"
 # Use register_guidelines() to add entries for additional languages.
 _GUIDELINES: dict[str, tuple[str, str]] = {
     ".py": ("Python", PYTHON_GUIDELINES),
+    ".js": ("JavaScript", JAVASCRIPT_GUIDELINES),
+    ".jsx": ("JavaScript", JAVASCRIPT_GUIDELINES),
+    ".ts": ("TypeScript", JAVASCRIPT_GUIDELINES),
+    ".tsx": ("TypeScript", JAVASCRIPT_GUIDELINES),
 }
 
 

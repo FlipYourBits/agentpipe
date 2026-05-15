@@ -1,6 +1,6 @@
 # codemonkeys
 
-Agent workflows for Python development, powered by the [Claude Agent SDK](https://docs.anthropic.com/en/docs/claude-agent-sdk). Structured code review via parallel agents, automated fixing, and engineering standards — all orchestrated from the command line.
+Agent workflows for Python and JavaScript/TypeScript development, powered by the [Claude Agent SDK](https://docs.anthropic.com/en/docs/claude-agent-sdk). Structured code review via parallel agents, automated fixing, and engineering standards — all orchestrated from the command line.
 
 ## Why codemonkeys over a Claude Code session?
 
@@ -98,8 +98,8 @@ codemonkeys/
 
 | Agent | Purpose | Model |
 |-------|---------|-------|
-| `python_file_reviewer` | Per-file code quality, security, and conventions review | sonnet |
-| `python_file_editor` | Per-file code edits and fixes | sonnet |
+| `code_reviewer` | Per-file code review (Python, JavaScript, TypeScript) | sonnet |
+| `code_editor` | Per-file code edits and fixes (Python, JavaScript, TypeScript) | sonnet |
 | `python_architecture_reviewer` | Cross-file design review | opus |
 | `researcher` | Autonomous web research with structured output | opus |
 

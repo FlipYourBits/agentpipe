@@ -1,13 +1,13 @@
 # Codemonkeys
 
-Python code review and development toolkit powered by Claude Agent SDK. Engineering judgment, workflow, and standards encoded as agent pipelines.
+Python and JavaScript/TypeScript code review and development toolkit powered by Claude Agent SDK. Engineering judgment, workflow, and standards encoded as agent pipelines.
 
 ## Agent Architecture
 
-Two generic agents handle all per-file work, dispatched by file extension:
+Two generic agents handle all per-file work, dispatched by file extension across multiple languages:
 
-- **`python_file_reviewer`** — reads a file and returns structured findings (code quality, security, conventions)
-- **`python_file_editor`** — applies edits to a file based on instructions or findings
+- **`code_reviewer`** — reads a file and returns structured findings (code quality, security, conventions). Supports Python, JavaScript, and TypeScript.
+- **`code_editor`** — applies edits to a file based on instructions or findings. Supports Python, JavaScript, and TypeScript.
 
 Cross-file design concerns are handled by a third agent:
 
