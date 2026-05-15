@@ -9,6 +9,7 @@ from codemonkeys.agents.code_reviewer import (
     make_code_reviewer,
     register_guidelines,
 )
+from codemonkeys.agents.researcher import make_researcher
 from codemonkeys.core.types import AgentDefinition
 
 REVIEWERS: dict[str, Callable[[str], AgentDefinition]] = {

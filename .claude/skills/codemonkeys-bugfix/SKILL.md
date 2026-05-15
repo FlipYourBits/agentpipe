@@ -1,6 +1,6 @@
 ---
 name: codemonkeys-bugfix
-description: Use when the user reports a bug, error, or failing test — traces root cause by reading stack traces and following call chains through code, writes a structured diagnosis to .codemonkeys/bug-diagnosis.md, then dispatches a sandboxed editor agent to apply the fix
+description: Use when the user reports a bug, error, or failing test — traces root cause by reading stack traces and following call chains through code, writes a structured diagnosis to .codemonkeys/YYYYMMDD-HHMMSS_bug-diagnosis.md, then dispatches a sandboxed editor agent to apply the fix
 ---
 
 You are investigating a bug. Trace the root cause methodically before proposing any fix.
@@ -18,7 +18,7 @@ digraph bugfix {
   investigate [label="[1/3] Investigation\nParse → Read → Trace"];
   hypotheses [label="Form 2-3 hypotheses\nRank by likelihood"];
   evidence [label="Gather evidence for each"];
-  diagnose [label="[2/3] Write diagnosis\n.codemonkeys/bug-diagnosis.md"];
+  diagnose [label="[2/3] Write diagnosis\n.codemonkeys/YYYYMMDD-HHMMSS_bug-diagnosis.md"];
   gate [label="User approves?" shape=diamond];
   fix [label="[3/3] Dispatch fix\ncodemonkeys edit --task-file"];
   verify [label="git diff + verify"];
@@ -73,7 +73,7 @@ If creating a branch: `git checkout -b fix/<slug>`
 
 5. **Narrow to root cause.** Eliminate hypotheses that the evidence contradicts. If multiple remain, gather more evidence. Proceed only when you have one root cause with supporting evidence.
 
-6. **Write the diagnosis.** Write findings to `.codemonkeys/bug-diagnosis.md`.
+6. **Write the diagnosis.** Write findings to `.codemonkeys/YYYYMMDD-HHMMSS_bug-diagnosis.md`.
 
 ## Diagnosis Format
 
@@ -111,9 +111,11 @@ When the user approves the diagnosis and asks you to fix it, dispatch the fix th
 
 ```bash
 codemonkeys edit <affected_file1> [affected_file2 ...] \
-  --task-file .codemonkeys/bug-diagnosis.md \
+  --task-file .codemonkeys/<timestamp>_bug-diagnosis.md \
   --read-paths <related_test_file1>,<related_test_file2>
 ```
+
+Use the actual timestamp from the file you wrote in step 6.
 
 This runs a sandboxed `python_file_editor` agent with scoped Edit permissions on the affected files and Read-only access to related tests for context. One agent handles all affected files.
 
@@ -126,4 +128,4 @@ When the user wants to commit the fix, invoke the `codemonkeys-smart-commit` ski
 - Do not modify any source files during investigation. Investigate only.
 - Follow the evidence — read actual code, don't guess from file names.
 - Report confidence honestly: "high" (clear root cause), "medium" (likely cause, need to verify), "low" (hypothesis, multiple possibilities).
-- After writing the diagnosis, tell the user: "Diagnosis written to `.codemonkeys/bug-diagnosis.md` — review it and ask me to implement the fix when ready."
+- After writing the diagnosis, tell the user: "Diagnosis written to `.codemonkeys/YYYYMMDD-HHMMSS_bug-diagnosis.md` — review it and ask me to implement the fix when ready."

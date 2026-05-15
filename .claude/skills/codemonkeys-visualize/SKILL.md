@@ -13,7 +13,7 @@ Can be invoked directly by the user (e.g. `/codemonkeys-visualize the data flow 
 2. **Consult the type selection matrix.** Determine which type file to read and whether a toolkit file is needed.
 3. **Read the relevant files.** Read files from this skill directory as the matrix indicates. Start with the type file, add toolkit files if the matrix says to.
 4. **Composite the HTML.** Start with the base template below. Add toolkit JS if needed. Add type-specific HTML/CSS/JS from the type file. The result is always a single self-contained HTML file.
-5. **Write and open.** Write to `.codemonkeys/visuals/<descriptive-name>.html`. Create the directory if needed. Open in browser:
+5. **Write and open.** Write to `.codemonkeys/visuals/YYYYMMDD-HHMMSS_<descriptive-name>.html`. Create the directory if needed. Open in browser:
    - Linux: `xdg-open <file>`
    - macOS: `open <file>`
    - Windows (Git Bash / WSL): `start <file>` or `wslview <file>`

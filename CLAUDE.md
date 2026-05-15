@@ -13,5 +13,9 @@ Cross-file design concerns are handled by a third agent:
 
 - **`python_architecture_reviewer`** — reviews multiple files for structural and design issues (coupling, cohesion, layering)
 
-The CLI exposes five commands: `review`, `edit`, `implement`, `architecture`, `init`.
+Open-ended research is handled by a fourth agent:
+
+- **`researcher`** — autonomous web research agent that investigates topics and produces SKILL.md or markdown reports
+
+The CLI exposes six commands: `review`, `edit`, `implement`, `architecture`, `research`, `init`.
 

@@ -133,7 +133,7 @@ class AuditResults(BaseModel):
 
 def make_log_dir(label: str | None = None) -> Path:
     """Create a timestamped log directory under .codemonkeys/logs/."""
-    ts = datetime.now().astimezone().strftime("%Y-%m-%d_%H-%M-%S")
+    ts = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
     name = f"{ts}_{label}" if label else ts
     log_dir = Path(".codemonkeys") / "logs" / name
     log_dir.mkdir(parents=True, exist_ok=True)

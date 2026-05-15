@@ -38,13 +38,13 @@ codemonkeys review --diff '*.py'
 
 Show the exact command before running it. The agents are read-only (Sonnet) — they report findings but don't edit anything.
 
-The CLI auto-suppresses verbose output when not a TTY. Results are written to `.codemonkeys/review-results.json`.
+The CLI auto-suppresses verbose output when not a TTY. Results are written to `.codemonkeys/<timestamp>_review-results.json` (the exact path is printed in the CLI output).
 
 ### 3. Read results and generate visual companion
 
 After the command completes:
 
-1. Read `.codemonkeys/review-results.json`
+1. Read the review results JSON file (path printed by the CLI)
 2. Invoke the `codemonkeys-visualize` skill to generate an HTML page with all findings:
    - Group findings by file
    - Color-code by severity (high=red, medium=yellow, low=blue)

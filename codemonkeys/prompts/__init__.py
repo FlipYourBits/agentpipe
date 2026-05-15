@@ -7,6 +7,12 @@ from codemonkeys.prompts.performance import PERFORMANCE_REVIEW
 from codemonkeys.prompts.python_cmd import PYTHON_CMD
 from codemonkeys.prompts.python_guidelines import PYTHON_GUIDELINES
 from codemonkeys.prompts.refactoring import REFACTOR_INSTRUCTIONS
+from codemonkeys.prompts.research_methodology import (
+    REPORT_FORMAT,
+    RESEARCH_METHODOLOGY,
+    SKILL_FORMAT,
+    VERIFICATION_RULES,
+)
 from codemonkeys.prompts.resilience_review import RESILIENCE_REVIEW
 from codemonkeys.prompts.security_review import SECURITY_REVIEW
 from codemonkeys.prompts.test_quality import TEST_QUALITY
@@ -19,7 +25,11 @@ __all__ = [
     "PYTHON_CMD",
     "PYTHON_GUIDELINES",
     "REFACTOR_INSTRUCTIONS",
+    "REPORT_FORMAT",
+    "RESEARCH_METHODOLOGY",
     "RESILIENCE_REVIEW",
+    "SKILL_FORMAT",
     "SECURITY_REVIEW",
     "TEST_QUALITY",
+    "VERIFICATION_RULES",
 ]

@@ -47,6 +47,18 @@ The workflow runs through three stages:
 2. **Triage** — presents all findings and lets you select which to fix.
 3. **Fix** — applies the selected fixes via a python fixer agent.
 
+### Research
+
+Dispatch an Opus-powered agent that searches the web, reads papers/docs/repos/forums, verifies claims with a confidence system, and writes a SKILL.md or markdown report:
+
+```bash
+# Research a topic and generate a Claude SKILL.md
+codemonkeys research 'flux.1 image generation https://arxiv.org/html/2408.06072'
+
+# Generate a markdown report instead
+codemonkeys research 'UXP plugins for Photoshop 2025' --format markdown
+```
+
 ### Using the library
 
 ```python
@@ -70,7 +82,7 @@ result = await run_agent(agent, "Review this file.", on_event=my_handler)
 
 ```
 codemonkeys/
-  agents/          # Agent factories — each returns an AgentDefinition
+  agents/          # Agent factories — each returns an AgentDefinition (includes researcher.py)
   core/
     runner.py      # run_agent(): wraps claude_agent_sdk.query()
     types.py       # AgentDefinition, RunResult, TokenUsage
@@ -89,6 +101,7 @@ codemonkeys/
 | `python_file_reviewer` | Per-file code quality, security, and conventions review | sonnet |
 | `python_file_editor` | Per-file code edits and fixes | sonnet |
 | `python_architecture_reviewer` | Cross-file design review | opus |
+| `researcher` | Autonomous web research with structured output | opus |
 
 ### Key concepts
 

@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 from rich.console import Console
@@ -110,8 +111,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Comma-separated finding indices from review-results.json (1-based)",
     )
     edit.add_argument(
-        "--results", type=str, default=".codemonkeys/review-results.json",
-        help="Path to review results JSON (used with --findings)",
+        "--results", type=str, default=None,
+        help="Path to review results JSON (default: most recent *_review-results.json)",
     )
 
     # --- implement (create new files, build features) ---
@@ -130,6 +131,20 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     init.add_argument(
         "--force", action="store_true", help="Overwrite existing skill files",
+    )
+
+    # --- research ---
+    research = sub.add_parser(
+        "research", help="Research a topic and generate a report or skill",
+    )
+    research.add_argument(
+        "topic", type=str,
+        help="Topic to research (may include URLs inline)",
+    )
+    research.add_argument(
+        "--format", type=str, default="skill", choices=["skill", "markdown"],
+        dest="output_format",
+        help="Output format: skill (SKILL.md) or markdown (report). Default: skill",
     )
 
     return parser
@@ -252,7 +267,8 @@ async def _run_review(
     total_cost = sum(r.cost_usd for r in results)
 
     review_results = AuditResults(files_reviewed=files, findings=all_findings)
-    results_path = Path(".codemonkeys") / "review-results.json"
+    ts = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
+    results_path = Path(".codemonkeys") / f"{ts}_review-results.json"
     results_path.parent.mkdir(parents=True, exist_ok=True)
     results_path.write_text(review_results.model_dump_json(indent=2))
 
@@ -350,8 +366,61 @@ async def _run_editor(
 
 
 # ---------------------------------------------------------------------------
+# research
+# ---------------------------------------------------------------------------
+
+
+async def _run_research(topic: str, output_format: str) -> None:
+    from codemonkeys.agents.researcher import make_researcher, make_topic_slug
+
+    slug = make_topic_slug(topic)
+    ts = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
+
+    if output_format == "skill":
+        output_dir = Path(".claude") / "skills" / slug
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = str(output_dir / "SKILL.md")
+    else:
+        output_dir = Path(".codemonkeys") / "research"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = str(output_dir / f"{ts}_{slug}.md")
+
+    agent = make_researcher(topic, output_path, output_format=output_format)
+    log_dir = make_log_dir("research")
+    log_name = re.sub(r"[^\w\-.]", "_", f"research_{slug}")
+    save_run_meta(log_dir, log_name, agent, topic)
+    file_log = make_file_printer(log_dir / f"{log_name}.log")
+    if sys.stdout.isatty():
+        printer = fan_out(make_stdout_printer(), file_log)
+    else:
+        printer = file_log
+
+    _console.print(f"[bold]Researching: {topic}[/bold]")
+    _console.print(f"[dim]Output: {output_path}[/dim]\n")
+
+    with logged(log_dir, log_name, printer=printer) as evt:
+        result = await run_agent(agent, topic, on_event=evt, log_dir=log_dir)
+
+    status = "[red]FAIL[/red]" if result.error else "[green]OK[/green]"
+    _console.print(f"\n  {status} Research complete")
+    _console.print(f"[dim]Cost: ${result.cost_usd:.4f}[/dim]")
+    _console.print(f"[dim]Output: {output_path}[/dim]")
+    _console.print(f"[dim]Logs: {log_dir}[/dim]")
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
+
+
+def _find_latest_results() -> str:
+    """Find the most recent *_review-results.json in .codemonkeys/."""
+    results_dir = Path(".codemonkeys")
+    candidates = sorted(results_dir.glob("*_review-results.json"), reverse=True)
+    if not candidates:
+        _console.print("[red]No review results found in .codemonkeys/[/red]")
+        raise SystemExit(1)
+    return str(candidates[0])
 
 
 def _resolve_task(args: argparse.Namespace) -> str:
@@ -365,7 +434,8 @@ def _resolve_task(args: argparse.Namespace) -> str:
         task = tf.read_text()
     if not task and hasattr(args, "findings") and args.findings:
         indices = [int(x.strip()) for x in args.findings.split(",")]
-        task = _task_from_findings(args.file_paths[0], indices, args.results)
+        results_path = args.results or _find_latest_results()
+        task = _task_from_findings(args.file_paths[0], indices, results_path)
     if not task:
         _console.print("[red]Provide --task, --task-file, or --findings[/red]")
         raise SystemExit(1)
@@ -429,6 +499,9 @@ def main(argv: list[str] | None = None) -> None:
         if args.read_paths:
             read_paths = [p.strip() for p in args.read_paths.split(",")]
         asyncio.run(_run_editor(args.file_paths, task, args.task_type, read_paths))
+
+    elif args.command == "research":
+        asyncio.run(_run_research(args.topic, args.output_format))
 
     elif args.command == "init":
         _run_init(force=args.force)

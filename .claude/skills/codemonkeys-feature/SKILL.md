@@ -48,11 +48,13 @@ digraph feature {
 
 Before any design work, check the current branch with `git branch --show-current`.
 
-- **On `main` or `master`:** Suggest creating a feature branch. Generate a name from the user's description: `feat/<short-slug>`. Ask: "You're on main. Want me to create `feat/<slug>` for this work?"
+- **On `main` or `master`:** Suggest creating a feature branch. Generate a name from the user's description: `feat/<short-slug>`. **Stop and ask the user** — do not proceed to Phase 1 until they answer. Ask: "You're on main. Want me to create `feat/<slug>` for this work?"
 - **On matching prefix** (`feat/` or `feature/`): Proceed silently.
-- **On wrong prefix** (anything else): Warn the user: "You're on `<branch>` — that doesn't look like a feature branch. Want me to create `feat/<slug>` instead, or continue here?"
+- **On wrong prefix** (anything else): **Stop and ask the user**: "You're on `<branch>` — that doesn't look like a feature branch. Want me to create `feat/<slug>` instead, or continue here?" Do not proceed until they answer.
 
 If creating a branch: `git checkout -b feat/<slug>`
+
+**Do not continue to Phase 1 until the branch question is resolved.** This is a blocking question, not rhetorical.
 
 ## Phase 1: Brainstorm the Design
 
@@ -87,7 +89,7 @@ Once you understand what you're building, present the design section by section.
 
 ### 7. Write the design spec
 
-Write the approved design to `.codemonkeys/YYYY-MM-DD_<feature-slug>_design-spec.md` (e.g. `.codemonkeys/2026-05-13_batch-runner_design-spec.md`). This document captures the *what* and *why* — it stands on its own as a record of design decisions, independent of implementation steps.
+Write the approved design to `.codemonkeys/YYYYMMDD-HHMMSS_<feature-slug>_design-spec.md` (e.g. `.codemonkeys/20260513-143022_batch-runner_design-spec.md`). This document captures the *what* and *why* — it stands on its own as a record of design decisions, independent of implementation steps.
 
 ```markdown
 # Design Spec: <feature name>
@@ -145,7 +147,7 @@ Do not proceed to Phase 2 until the user explicitly approves. If they request ch
 
 ## Phase 2: Write the Implementation Plan
 
-Once the design spec is approved, write the implementation plan to `.codemonkeys/YYYY-MM-DD_<feature-slug>_feature-plan.md` (use the same date and slug as the design spec). This document is the *how* — agent-ready task list with explicit file permissions so it can be handed to sandboxed implementation agents.
+Once the design spec is approved, write the implementation plan to `.codemonkeys/YYYYMMDD-HHMMSS_<feature-slug>_feature-plan.md` (use the same date and slug as the design spec). This document is the *how* — agent-ready task list with explicit file permissions so it can be handed to sandboxed implementation agents.
 
 ### File Structure
 
@@ -156,7 +158,7 @@ Before defining tasks, map out which files will be created or modified and what 
 ````markdown
 # Feature Plan: <feature name>
 
-**Design spec:** `.codemonkeys/YYYY-MM-DD_<feature-slug>_design-spec.md`
+**Design spec:** `.codemonkeys/YYYYMMDD-HHMMSS_<feature-slug>_design-spec.md`
 
 **Goal:** <one sentence describing what this builds>
 
