@@ -33,8 +33,8 @@ If the current branch is `main` or `master`:
    - `docs/<slug>` — documentation only
    - `test/<slug>` — test only
    - `chore/<slug>` — maintenance, deps, config
-3. Ask the user: "You're on main. Want me to move these changes to `<suggested-branch>`?" (offer alternatives)
-4. If yes: `git checkout -b <branch>` — uncommitted changes carry over automatically
+3. Use `AskUserQuestion` with a selector: "You're on main. Want me to move these changes to `<suggested-branch>`?" Options: the suggested branch name, an alternative branch name if applicable, and "Stay on main". 
+4. If they pick a branch: `git checkout -b <branch>` — uncommitted changes carry over automatically
 
 ### 3. Decide if docs need updating
 
@@ -93,7 +93,7 @@ Only include files that actually need updates — don't pass all three every tim
    - Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
    - Blank line, then body with bullet points if multiple changes
 3. Show the user the staged files and proposed commit message
-4. Ask for approval before committing
+4. Use `AskUserQuestion` with a selector to ask for approval. Options: "Commit", "Edit message", "Cancel".
 5. Commit (do NOT push — wait for explicit ask)
 
 ### 6. Post-commit
@@ -101,8 +101,8 @@ Only include files that actually need updates — don't pass all three every tim
 After a successful commit:
 1. Show the commit hash and message
 2. Show `git log --oneline -3` for context
-3. Ask: "Want me to push to origin?"
-4. If yes: `git push -u origin <branch>` (use `-u` if no upstream is set)
+3. Use `AskUserQuestion` with a selector: "Want me to push to origin?" Options: "Push", "Skip".
+4. If they pick Push: `git push -u origin <branch>` (use `-u` if no upstream is set)
 
 ## Rules
 
