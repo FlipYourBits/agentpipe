@@ -3,14 +3,28 @@
 from __future__ import annotations
 
 import dataclasses
-import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
+
+Severity = Literal["high", "medium", "low"]
+
+_TOOL_SPEC_RE = re.compile(r"^(\w+)\((.+)\)$")
+
+
+def parse_tool_spec(spec: str) -> tuple[str, str | None]:
+    """Parse a tool spec like ``Read(codemonkeys/*)`` into ``(name, pattern)``.
+
+    Returns ``(name, None)`` for bare tool names like ``Read``.
+    """
+    m = _TOOL_SPEC_RE.match(spec)
+    if m:
+        return m.group(1), m.group(2)
+    return spec, None
 
 
 def json_safe(obj: Any) -> Any:
@@ -22,7 +36,7 @@ def json_safe(obj: Any) -> Any:
     if isinstance(obj, (list, tuple)):
         return [json_safe(v) for v in obj]
     if isinstance(obj, type):
-        return obj.__qualname__
+        return obj.__name__
     if hasattr(obj, "model_dump"):
         return obj.model_dump()  # type: ignore[union-attr]
     if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
@@ -62,8 +76,10 @@ class AgentDefinition:
     model: str
     system_prompt: str
     tools: list[str] = field(default_factory=list)
+    deny_hint: str | None = None
     output_schema: type[BaseModel] | None = None
     hooks: AgentHooks = field(default_factory=dict)
+    max_stop_retries: int = 2
 
 
 @dataclass
@@ -89,72 +105,35 @@ class RunResult:
     agent_def: AgentDefinition | None = None
     events: list = field(default_factory=list)
 
-    def save_output(self, directory: str | Path) -> Path | None:
-        """Write structured output JSON to directory. Returns path or None."""
-        if self.output is None or self.agent_def is None:
-            return None
-        directory = Path(directory)
-        directory.mkdir(parents=True, exist_ok=True)
-        name = re.sub(r"[^\w\-.]", "_", self.agent_def.name)
-        path = directory / f"{name}.json"
-        path.write_text(self.output.model_dump_json(indent=2) + "\n")
-        return path
 
-    def save_run(self, directory: str | Path) -> Path:
-        """Write a comprehensive run log (agent config + results + events).
+class AuditFinding(BaseModel):
+    """A single code review finding."""
 
-        Includes everything needed to audit the run after the fact:
-        system prompt, tools, hooks, structured output, event trace,
-        token usage, cost, and duration.
-        """
-        ad = self.agent_def
-        directory = Path(directory)
-        directory.mkdir(parents=True, exist_ok=True)
-        name = re.sub(r"[^\w\-.]", "_", ad.name) if ad else "unknown"
-
-        data: dict[str, Any] = {
-            "agent": {
-                "name": ad.name if ad else "unknown",
-                "model": ad.model if ad else "unknown",
-                "system_prompt": ad.system_prompt if ad else "",
-                "tools": ad.tools if ad else [],
-                "hooks": ad.hooks if ad else {},
-                "output_schema": ad.output_schema.__name__
-                if ad and ad.output_schema
-                else None,
-            },
-            "result": {
-                "output": self.output.model_dump() if self.output else None,
-                "text": self.text,
-                "error": self.error,
-            },
-            "tokens": {
-                "input": self.usage.input_tokens,
-                "output": self.usage.output_tokens,
-                "cache_read": self.usage.cache_read_tokens,
-                "cache_creation": self.usage.cache_creation_tokens,
-            },
-            "cost_usd": self.cost_usd,
-            "duration_seconds": self.duration_ms / 1000,
-            "events": [_serialize_event(e) for e in self.events],
-        }
-
-        path = directory / f"{name}.json"
-        path.write_text(json.dumps(data, indent=2, default=str) + "\n")
-        return path
+    file: str
+    line: int | None = None
+    category: str
+    severity: Severity
+    title: str
+    description: str
+    suggestion: str | None = None
 
 
-def _serialize_event(event: Any) -> dict[str, Any]:
-    """Convert an event dataclass to a JSON-serializable dict."""
-    data: dict[str, Any] = {"type": type(event).__name__}
-    for key, value in vars(event).items():
-        data[key] = json_safe(value)
-    return data
+class FileReviewResult(BaseModel):
+    """Structured output from a single file reviewer agent."""
+
+    findings: list[AuditFinding]
 
 
-def make_log_dir(label: str = "") -> Path:
+class AuditResults(BaseModel):
+    """Aggregated findings from all reviewer agents."""
+
+    files_reviewed: list[str]
+    findings: list[AuditFinding]
+
+
+def make_log_dir(label: str | None = None) -> Path:
     """Create a timestamped log directory under .codemonkeys/logs/."""
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
+    ts = datetime.now().astimezone().strftime("%Y-%m-%d_%H-%M-%S")
     name = f"{ts}_{label}" if label else ts
     log_dir = Path(".codemonkeys") / "logs" / name
     log_dir.mkdir(parents=True, exist_ok=True)

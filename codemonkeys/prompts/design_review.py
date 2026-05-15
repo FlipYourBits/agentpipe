@@ -1,5 +1,7 @@
 """Language-agnostic design review checklist loaded into the architecture reviewer agent."""
 
+from __future__ import annotations
+
 DESIGN_REVIEW = """\
 ## Design Review Checklist
 
@@ -60,10 +62,21 @@ where you can point to specific files and explain the concrete problem.
   (some return raw dicts, others return typed models)
 - Public interfaces that don't match the abstraction level of their module
 
+### integration_seams
+
+- New code that ignores established project patterns — its own logger instead of
+  the project logger, manual config reads instead of the config system, custom
+  error types that bypass the project's error handling conventions
+- Features that interact incorrectly with existing logging, config, error handling,
+  or shutdown patterns across module boundaries
+- Inconsistent integration with shared infrastructure (some modules use the
+  shared retry/timeout/caching mechanism, others roll their own)
+
 ## Exclusions — DO NOT REPORT
 
 These belong to other review categories:
 - Per-file code quality issues (per-file reviewer owns these)
+- Per-file error handling, edge cases, or input validation (resilience/security reviewers own these)
 - Security vulnerabilities (per-file reviewer owns these)
 - Formatting/whitespace (linter owns these)
 - Type errors (type checker owns these)

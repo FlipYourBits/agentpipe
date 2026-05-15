@@ -2,19 +2,28 @@
 
 Agent workflows for Python development, powered by the [Claude Agent SDK](https://docs.anthropic.com/en/docs/claude-agent-sdk). Structured code review via parallel agents, automated fixing, and engineering standards — all orchestrated from the command line.
 
-## Prerequisites
+## Why codemonkeys over a Claude Code session?
 
-- Python 3.10+
-- [uv](https://docs.astral.sh/uv/)
-- A Claude API key (`ANTHROPIC_API_KEY`)
+A Claude Code session is a single conversational thread with full permissions, no enforced structure, and whatever the human remembers to ask for. Codemonkeys provides **constrained, repeatable, parallelizable agent pipelines with automated quality gates.**
 
-## Installation
+- **Scoped agents that can't go off-script** — tool restrictions, filesystem sandboxing, and pattern-matched permissions. A code reviewer can't write files. A test writer can't touch source. Trust boundaries within a workflow, not "Claude has access to everything."
+- **Parallel execution** — review 10 files simultaneously, run test writers across uncovered modules. A Claude Code session is inherently sequential. This is where you get actual throughput gains.
+- **Encoded process as code** — stop hooks gate completion on passing tests, post-edit auto-linting, review checklists applied consistently every run. Engineering standards are versioned, shared, and enforced — not dependent on the human remembering to say "also run the linter."
+
+## Quickstart
+
+Requires Python 3.10+, [uv](https://docs.astral.sh/uv/), and a Claude API key (`ANTHROPIC_API_KEY`).
 
 ```bash
-git clone https://github.com/FlipYourBits/codemonkeys.git
-cd codemonkeys
-uv sync --extra dev
+# Install the CLI globally
+uv tool install codemonkeys --from git+https://github.com/FlipYourBits/codemonkeys.git
+
+# In your project directory, install Claude Code skills
+cd your-project/
+codemonkeys init
 ```
+
+That's it — `codemonkeys` is on your PATH and Claude Code picks up the skills automatically.
 
 ## Usage
 
@@ -23,18 +32,20 @@ uv sync --extra dev
 Review all Python files matching a glob pattern, triage findings interactively, and optionally apply fixes:
 
 ```bash
-# Review all Python files in the project
-uv run python -m codemonkeys.workflows.review
+# Review specific files or directories
+codemonkeys review src/foo.py src/bar.py
+codemonkeys review src/core/
 
-# Review files matching a pattern
-uv run python -m codemonkeys.workflows.review 'codemonkeys/core/**/*.py'
+# Review changes against a git ref
+codemonkeys review --diff
+codemonkeys review --diff main
 ```
 
 The workflow runs through three stages:
 
 1. **Review** — dispatches a reviewer agent per file in parallel (up to 5 concurrent). Each agent returns structured JSON findings covering code quality, security, and Python conventions.
 2. **Triage** — presents all findings and lets you select which to fix.
-3. **Fix** — applies the selected fixes via a fixer agent.
+3. **Fix** — applies the selected fixes via a python fixer agent.
 
 ### Using the library
 
@@ -67,26 +78,21 @@ codemonkeys/
     hooks.py       # Tool permission enforcement + automated checks
     sandbox.py     # OS-level filesystem sandboxing
     discovery.py   # File discovery by glob pattern
-  display/         # Rich live display, stdout formatting, file logging
+  display/         # file_printer, stdout formatting, file logging
   prompts/         # Shared prompt templates (quality, security, guidelines)
-  workflows/       # Multi-agent orchestration (review pipeline)
 ```
 
 ### Agents
 
 | Agent | Purpose | Model |
 |-------|---------|-------|
-| `python_reviewer` | Per-file code quality, security, and conventions review | sonnet |
-| `architecture_reviewer` | Cross-file design review | opus |
-| `fixer` | Applies fixes from triaged findings | sonnet |
-| `triage` | Prioritizes and filters findings | sonnet |
-| `python_implementer` | TDD implementation from a plan file | opus |
-| `changelog_reviewer` | CHANGELOG.md vs git history accuracy | haiku |
-| `readme_reviewer` | Verifies README claims against codebase | sonnet |
+| `python_file_reviewer` | Per-file code quality, security, and conventions review | sonnet |
+| `python_file_editor` | Per-file code edits and fixes | sonnet |
+| `python_architecture_reviewer` | Cross-file design review | opus |
 
 ### Key concepts
 
-**AgentDefinition** — immutable dataclass describing an agent: name, model, system prompt, allowed tools, output schema, and hooks.
+**AgentDefinition** — immutable dataclass describing an agent: name, model, system prompt, allowed tools, output schema, hooks, and `max_stop_retries` (default 2, caps consecutive Stop-hook failures).
 
 **Hooks** — shell commands that run automatically at SDK hook events. `PreToolUse` hooks enforce tool permissions. `PostToolUse` hooks run checks after tool calls (e.g., ruff after edits). `Stop` hooks gate agent completion (e.g., tests must pass).
 
@@ -95,6 +101,15 @@ codemonkeys/
 **Sandbox** — OS-level filesystem restriction. Once activated, the process can only write inside the project directory. Backends: Landlock (Linux), sandbox-exec (macOS), Low Integrity Token (Windows).
 
 ## Development
+
+```bash
+git clone https://github.com/FlipYourBits/codemonkeys.git
+cd codemonkeys
+uv sync --extra dev
+uv tool install -e . --force
+```
+
+The `-e` (editable) flag links the global `codemonkeys` CLI to your local source — code changes are picked up immediately without reinstalling.
 
 ```bash
 # Run tests

@@ -79,6 +79,7 @@ def make_stdout_printer(console: Console | None = None) -> EventHandler:
 
         elif isinstance(event, ThinkingOutput):
             _current_tool[name] = "thinking"
+            _console.print(f"  [dim italic]{name} thinking:[/dim italic] {event.text}")
             _update_spinner()
 
         elif isinstance(event, TextOutput):

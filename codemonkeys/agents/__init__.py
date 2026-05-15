@@ -1,27 +1,35 @@
-"""Agent factory functions."""
+"""Agent factory functions and reviewer registry."""
 
-from codemonkeys.agents.architecture_reviewer import make_architecture_reviewer
-from codemonkeys.agents.docs_reviewer import make_docs_reviewer
-from codemonkeys.agents.fixer import make_fixer
-from codemonkeys.agents.python_characterization_tester import (
-    make_python_characterization_tester,
+from __future__ import annotations
+
+from typing import Callable
+
+from codemonkeys.agents.code_editor import make_code_editor
+from codemonkeys.agents.code_reviewer import (
+    make_code_reviewer,
+    register_guidelines,
 )
-from codemonkeys.agents.python_reviewer import make_python_reviewer
-from codemonkeys.agents.python_implementer import make_python_implementer
-from codemonkeys.agents.python_structural_refactorer import (
-    make_python_structural_refactorer,
-)
-from codemonkeys.agents.spec_compliance_reviewer import make_spec_compliance_reviewer
-from codemonkeys.agents.triage import make_triage
+from codemonkeys.core.types import AgentDefinition
+
+REVIEWERS: dict[str, Callable[[str], AgentDefinition]] = {
+    ".py": make_code_reviewer,
+}
+
+
+def get_reviewer(ext: str) -> Callable[[str], AgentDefinition] | None:
+    """Look up a reviewer factory by file extension. Returns None if no reviewer is registered."""
+    return REVIEWERS.get(ext)
+
+
+def register_reviewer(ext: str, factory: Callable[[str], AgentDefinition]) -> None:
+    """Register a reviewer factory for a file extension (e.g. ``".js"``)."""
+    REVIEWERS[ext] = factory
+
 
 __all__ = [
-    "make_architecture_reviewer",
-    "make_docs_reviewer",
-    "make_fixer",
-    "make_python_characterization_tester",
-    "make_python_reviewer",
-    "make_python_implementer",
-    "make_python_structural_refactorer",
-    "make_spec_compliance_reviewer",
-    "make_triage",
+    "get_reviewer",
+    "make_code_editor",
+    "make_code_reviewer",
+    "register_guidelines",
+    "register_reviewer",
 ]

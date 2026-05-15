@@ -1,9 +1,7 @@
 """Test quality checklist — assertion rigor, test design, and isolation."""
 
 TEST_QUALITY = """\
-## Test Quality Review Checklist
-
-Review the test file for quality issues. Only report findings at 80%+ confidence.
+## Test Quality
 
 ### assertion_quality
 

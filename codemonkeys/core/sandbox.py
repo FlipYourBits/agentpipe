@@ -74,11 +74,10 @@ def is_restricted() -> bool:
 def _restrict_linux(project: Path) -> None:
     try:
         from landlock import FSAccess, Ruleset
-    except ImportError:
-        _log.warning(
-            "landlock package not installed — install it with: pip install landlock"
-        )
-        return
+    except ImportError as exc:
+        raise RuntimeError(
+            "landlock package not installed; run: pip install landlock"
+        ) from exc
 
     write_flags = (
         FSAccess.WRITE_FILE
@@ -108,6 +107,10 @@ def _restrict_linux(project: Path) -> None:
         if claude_dir.is_dir():
             rs.allow(str(claude_dir), rules=write_flags)
 
+    cache_dir = Path(os.environ.get("XDG_CACHE_HOME", str(home / ".cache")))
+    if cache_dir.is_dir():
+        rs.allow(str(cache_dir), rules=write_flags)
+
     rs.apply()
 
 
@@ -131,13 +134,14 @@ _SEATBELT_PROFILE = """\
 ;; Read access everywhere.
 (allow file-read*)
 
-;; Write access only to the project directory, /tmp, and Claude CLI state.
+;; Write access only to the project directory, /tmp, caches, and Claude CLI state.
 (allow file-write* (subpath "{project_dir}"))
 (allow file-write* (subpath "/tmp"))
 (allow file-write* (subpath "/private/tmp"))
 (allow file-write* (subpath "/dev"))
 (allow file-write* (subpath "{claude_dir}"))
 (allow file-write* (subpath "{claude_data_dir}"))
+(allow file-write* (subpath "{cache_dir}"))
 """
 
 _SANDBOX_ENV_KEY = "CODEMONKEYS_SANDBOXED"
@@ -148,10 +152,12 @@ def _restrict_darwin(project: Path) -> None:
         return
 
     home = Path.home()
+    cache_dir = home / "Library" / "Caches"
     profile = _SEATBELT_PROFILE.format(
         project_dir=str(project),
         claude_dir=str(home / ".claude"),
         claude_data_dir=str(home / ".local" / "share" / "claude"),
+        cache_dir=str(cache_dir),
     )
 
     os.environ[_SANDBOX_ENV_KEY] = "1"
@@ -190,6 +196,11 @@ def _restrict_windows(project: Path) -> None:
     claude_data = home / "AppData" / "Local" / "claude"
     if claude_data.is_dir():
         writable_dirs.append(claude_data)
+    cache_dir = (
+        Path(os.environ.get("LOCALAPPDATA", str(home / "AppData" / "Local"))) / "uv"
+    )
+    if cache_dir.is_dir():
+        writable_dirs.append(cache_dir)
 
     for d in writable_dirs:
         if d.is_dir():

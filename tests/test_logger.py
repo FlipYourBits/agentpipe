@@ -4,7 +4,8 @@ import time
 from pathlib import Path
 
 from codemonkeys.core.events import AgentStarted, ToolCall
-from codemonkeys.display.logger import FileLogger
+from codemonkeys.core.types import AgentDefinition
+from codemonkeys.display.logger import FileLogger, load_run_meta, save_run_meta
 
 
 def test_file_logger_writes_jsonl():
@@ -45,3 +46,34 @@ def test_file_logger_as_event_handler():
 
     lines = Path(path).read_text().strip().split("\n")
     assert len(lines) == 1
+
+
+def test_save_run_meta_writes_json(tmp_path: Path) -> None:
+    agent = AgentDefinition(
+        name="test_agent",
+        model="sonnet",
+        system_prompt="You are a test agent.",
+        tools=["Read(foo.py)", "Edit(foo.py)"],
+    )
+    save_run_meta(tmp_path, "run_01", agent, "Do the thing.")
+    path = tmp_path / "run_01_meta.json"
+    assert path.exists()
+    data = json.loads(path.read_text())
+    assert data["agent_name"] == "test_agent"
+    assert data["model"] == "sonnet"
+    assert data["system_prompt"] == "You are a test agent."
+    assert data["tools"] == ["Read(foo.py)", "Edit(foo.py)"]
+    assert data["prompt"] == "Do the thing."
+
+
+def test_load_run_meta_roundtrips(tmp_path: Path) -> None:
+    agent = AgentDefinition(
+        name="roundtrip",
+        model="opus",
+        system_prompt="prompt text",
+        tools=["Read"],
+    )
+    save_run_meta(tmp_path, "rt", agent, "the prompt")
+    loaded = load_run_meta(tmp_path / "rt_meta.json")
+    assert loaded["agent_name"] == "roundtrip"
+    assert loaded["prompt"] == "the prompt"

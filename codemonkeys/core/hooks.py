@@ -31,15 +31,12 @@ from __future__ import annotations
 import asyncio
 import fnmatch
 import os
-import re
 from typing import Any
 
 from claude_agent_sdk import HookCallback, HookInput, HookMatcher
 from claude_agent_sdk.types import HookEvent, SyncHookJSONOutput
 
-from codemonkeys.core.types import AgentHooks
-
-_TOOL_PATTERN_RE = re.compile(r"^(\w+)\((.+)\)$")
+from codemonkeys.core.types import AgentHooks, parse_tool_spec
 
 _PATH_FIELDS = {"file_path", "path"}
 
@@ -73,20 +70,10 @@ def _parse_tool_patterns(tools: list[str]) -> dict[str, list[str]]:
     """Extract ``{tool_name: [glob_patterns]}`` from Tool(pattern) entries."""
     result: dict[str, list[str]] = {}
     for spec in tools:
-        m = _TOOL_PATTERN_RE.match(spec)
-        if m:
-            tool_name, pattern = m.group(1), m.group(2)
+        tool_name, pattern = parse_tool_spec(spec)
+        if pattern is not None:
             result.setdefault(tool_name, []).append(pattern)
     return result
-
-
-def _has_bare_tool(tool_name: str, tools: list[str]) -> bool:
-    """Check if a bare tool name (without pattern) is in the allowlist."""
-    return tool_name in tools and not any(
-        _TOOL_PATTERN_RE.match(t) and _TOOL_PATTERN_RE.match(t).group(1) == tool_name  # type: ignore[union-attr]
-        for t in tools
-        if t == tool_name
-    )
 
 
 def _get_match_value(tool_name: str, tool_input: dict[str, Any]) -> str:
@@ -123,6 +110,7 @@ def _make_hook_fn(
     tool_name: str,
     patterns: list[str],
     on_deny: OnDenyCallback | None,
+    deny_hint: str | None = None,
 ) -> HookCallback:
     """Build a PreToolUse hook that enforces patterns for a single tool."""
     field = _TOOL_INPUT_FIELDS.get(tool_name, "command")
@@ -143,14 +131,17 @@ def _make_hook_fn(
                 }
         if on_deny:
             on_deny(tool_name, value)
+        reason = (
+            f"{tool_name} input not allowed. "
+            f"Permitted patterns for {field}: {patterns}"
+        )
+        if deny_hint:
+            reason += f" Hint: {deny_hint}"
         return {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
-                "permissionDecisionReason": (
-                    f"{tool_name} input not allowed. "
-                    f"Permitted patterns for {field}: {patterns}"
-                ),
+                "permissionDecisionReason": reason,
             }
         }
 
@@ -160,6 +151,7 @@ def _make_hook_fn(
 def build_permission_hooks(
     allowed_tools: list[str],
     on_deny: OnDenyCallback | None = None,
+    deny_hint: str | None = None,
 ) -> dict[HookEvent, list[HookMatcher]]:
     """Build PreToolUse hooks that enforce pattern-restricted tools."""
     all_patterns = _parse_tool_patterns(allowed_tools)
@@ -168,19 +160,10 @@ def build_permission_hooks(
 
     matchers: list[HookMatcher] = []
     for tool_name, patterns in all_patterns.items():
-        hook_fn = _make_hook_fn(tool_name, patterns, on_deny)
+        hook_fn = _make_hook_fn(tool_name, patterns, on_deny, deny_hint)
         matchers.append(HookMatcher(matcher=tool_name, hooks=[hook_fn]))
 
     return {"PreToolUse": matchers}
-
-
-# Keep the old name as an alias for backwards compatibility
-def build_tool_hooks(
-    allowed_tools: list[str],
-    on_deny: OnDenyCallback | None = None,
-) -> dict[HookEvent, list[HookMatcher]] | None:
-    result = build_permission_hooks(allowed_tools, on_deny)
-    return result or None
 
 
 # ---------------------------------------------------------------------------
@@ -197,19 +180,27 @@ def _shell_hook(
     event: str,
     agent_name: str,
     on_check: OnCheckCallback | None,
+    max_retries: int | None = None,
 ) -> HookCallback:
     """Turn a shell command template into an SDK hook callback.
 
     Placeholders like ``{file_path}`` are interpolated from the hook's
     ``tool_input`` dict.  For Stop hooks (no tool_input), the command
     runs as-is.
+
+    For Stop hooks, *max_retries* caps how many times a failure blocks
+    the agent.  After that many consecutive failures the hook lets the
+    agent finish to avoid infinite loops.
     """
+    fail_count = 0
 
     async def _run(
         hook_input: HookInput,
         _tool_use_id: str | None,
         _context: Any,
     ) -> SyncHookJSONOutput:
+        nonlocal fail_count
+
         tool_input: dict[str, Any] = hook_input.get("tool_input", {})  # type: ignore[typeddict-item]
         try:
             command = command_template.format_map(tool_input)
@@ -242,20 +233,30 @@ def _shell_hook(
                 }
             }
 
-        if event == "SubagentStart":
+        if event == "UserPromptSubmit":
+            if not passed:
+                return {
+                    "decision": "block",
+                    "reason": message,
+                }
             return {
                 "hookSpecificOutput": {
-                    "hookEventName": "SubagentStart",
+                    "hookEventName": "UserPromptSubmit",
                     "additionalContext": message,
                 }
             }
 
-        # Stop hook — block the agent from finishing if the check failed
+        # Stop hook — block the agent from finishing if the check failed,
+        # but give up after max_retries consecutive failures.
         if not passed:
+            fail_count += 1
+            if max_retries is not None and fail_count > max_retries:
+                return {}
             return {
                 "decision": "block",
                 "reason": message,
             }
+        fail_count = 0
         return {}
 
     return _run  # type: ignore[return-value]
@@ -265,6 +266,7 @@ def build_check_hooks(
     checks: AgentHooks,
     agent_name: str = "",
     on_check: OnCheckCallback | None = None,
+    max_stop_retries: int | None = None,
 ) -> dict[HookEvent, list[HookMatcher]]:
     """Build hooks from an AgentDefinition's ``checks`` dict.
 
@@ -275,7 +277,8 @@ def build_check_hooks(
     for event_name, entries in checks.items():
         matchers: list[HookMatcher] = []
         for matcher, command in entries:
-            hook_fn = _shell_hook(command, event_name, agent_name, on_check)
+            retries = max_stop_retries if event_name == "Stop" else None
+            hook_fn = _shell_hook(command, event_name, agent_name, on_check, max_retries=retries)
             matchers.append(HookMatcher(matcher=matcher, hooks=[hook_fn]))
         if matchers:
             result[event_name] = matchers  # type: ignore[assignment]

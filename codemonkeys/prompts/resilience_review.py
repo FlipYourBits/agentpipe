@@ -1,10 +1,7 @@
 """Production resilience checklist — concurrency, error recovery, and log hygiene."""
 
 RESILIENCE_REVIEW = """\
-## Resilience Review Checklist
-
-Review the file for production resilience issues. Only report findings at 80%+
-confidence with concrete scenarios where the issue would cause a problem.
+## Resilience
 
 ### concurrency
 
@@ -39,8 +36,8 @@ or context manager
 ## Exclusions — DO NOT REPORT
 
 These belong to other review categories:
-- Broad exception catching (CODE_QUALITY owns this)
-- Missing exception handling (CODE_QUALITY owns this)
-- General try/except patterns (CODE_QUALITY owns this)
-- PII as a security vulnerability (SECURITY_OBSERVATIONS owns this — report here \
+- Broad exception catching (CODE_REVIEW owns this)
+- Missing exception handling (CODE_REVIEW owns this)
+- General try/except patterns (CODE_REVIEW owns this)
+- PII as a security vulnerability (SECURITY_REVIEW owns this — report here \
 only as an operational log hygiene concern)"""
