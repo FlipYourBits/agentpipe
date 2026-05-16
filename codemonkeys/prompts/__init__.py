@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from codemonkeys.prompts.code_review import CODE_REVIEW
+from codemonkeys.prompts.css_guidelines import CSS_GUIDELINES
 from codemonkeys.prompts.design_review import DESIGN_REVIEW
 from codemonkeys.prompts.engineering_guidelines import ENGINEERING_GUIDELINES
+from codemonkeys.prompts.html_guidelines import HTML_GUIDELINES
 from codemonkeys.prompts.javascript_guidelines import JAVASCRIPT_GUIDELINES
 from codemonkeys.prompts.performance import PERFORMANCE_REVIEW
 from codemonkeys.prompts.python_cmd import PYTHON_CMD
@@ -20,8 +22,10 @@ from codemonkeys.prompts.test_quality import TEST_QUALITY
 
 __all__ = [
     "CODE_REVIEW",
+    "CSS_GUIDELINES",
     "DESIGN_REVIEW",
     "ENGINEERING_GUIDELINES",
+    "HTML_GUIDELINES",
     "JAVASCRIPT_GUIDELINES",
     "PERFORMANCE_REVIEW",
     "PYTHON_CMD",

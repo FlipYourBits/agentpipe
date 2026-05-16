@@ -8,7 +8,9 @@ from pathlib import Path
 from codemonkeys.core.types import AgentDefinition, FileReviewResult
 from codemonkeys.prompts import (
     CODE_REVIEW,
+    CSS_GUIDELINES,
     DESIGN_REVIEW,
+    HTML_GUIDELINES,
     JAVASCRIPT_GUIDELINES,
     PERFORMANCE_REVIEW,
     PYTHON_GUIDELINES,
@@ -27,6 +29,8 @@ _GUIDELINES: dict[str, tuple[str, str]] = {
     ".jsx": ("JavaScript", JAVASCRIPT_GUIDELINES),
     ".ts": ("TypeScript", JAVASCRIPT_GUIDELINES),
     ".tsx": ("TypeScript", JAVASCRIPT_GUIDELINES),
+    ".css": ("CSS", CSS_GUIDELINES),
+    ".html": ("HTML", HTML_GUIDELINES + "\n\n" + JAVASCRIPT_GUIDELINES + "\n\n" + CSS_GUIDELINES),
 }
 
 
