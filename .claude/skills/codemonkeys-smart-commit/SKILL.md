@@ -108,6 +108,7 @@ After a successful commit:
 
 - Never commit without showing the user what will be committed and getting approval.
 - Never push without asking — always offer, never auto-push.
+- Never delete branches without asking — after a merge to main, use `AskUserQuestion` with a selector: "Delete the feature branch?" Options: "Delete local + remote", "Delete local only", "Keep branch".
 - Never stage `.env`, credentials, or secrets. Warn if any appear in the diff.
-- If the docs agent fails or produces bad output, skip the doc updates and proceed with the commit — don't block the commit on docs.
+- If the docs agent fails or produces bad output, skip the doc updates and proceed with the commit �� don't block the commit on docs.
 - Keep commit messages concise. The first line is the most important part.
