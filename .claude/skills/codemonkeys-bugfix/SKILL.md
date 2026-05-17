@@ -20,7 +20,7 @@ digraph bugfix {
   evidence [label="Gather evidence for each"];
   diagnose [label="[2/3] Write diagnosis\n.codemonkeys/YYYYMMDD-HHMMSS_bug-diagnosis.md"];
   gate [label="User approves?" shape=diamond];
-  fix [label="[3/3] Dispatch fix\ncodemonkeys edit --task-file"];
+  fix [label="[3/3] Dispatch fix\nAgent tool + worktree"];
   verify [label="git diff + verify"];
   start -> branch;
   branch -> create [label="on main"];
@@ -56,7 +56,7 @@ Before investigating, check the current branch with `git branch --show-current`.
 
 If creating a branch: `git checkout -b fix/<slug>`
 
-## Investigation
+## [1/3] Investigation
 
 1. **Parse the report.** If error output or a stack trace is provided, read the stack trace to identify the immediate failure point.
 
@@ -75,7 +75,7 @@ If creating a branch: `git checkout -b fix/<slug>`
 
 6. **Write the diagnosis.** Write findings to `.codemonkeys/YYYYMMDD-HHMMSS_bug-diagnosis.md`.
 
-## Diagnosis Format
+## [2/3] Diagnosis Format
 
 ```markdown
 # Bug Diagnosis
@@ -105,27 +105,36 @@ If creating a branch: `git checkout -b fix/<slug>`
 
 ```
 
-## Dispatching the fix
+After writing, tell the user: "Diagnosis written to `.codemonkeys/YYYYMMDD-HHMMSS_bug-diagnosis.md` — review it and ask me to implement the fix when ready."
 
-When the user approves the diagnosis and asks you to fix it, dispatch the fix through a codemonkeys agent:
+## [3/3] Dispatching the Fix
+
+When the user approves the diagnosis:
+
+1. Read the appropriate language guidelines from `.claude/agents/codemonkeys-guidelines/` based on affected file extensions
+2. Read the diagnosis file content
+3. Spawn an Agent tool call with:
+   - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools and worktree isolation from AGENT.md frontmatter)
+   - `prompt`: guidelines content + `"\n\n## Task\n\n"` + the full diagnosis content (root cause, affected files, proposed fix)
+
+After the editor agent completes:
+- The result will include the worktree branch with the changes
+- Merge changes back: `git checkout <worktree-branch> -- <affected_files>`
+- Show `git diff` to the user
+- Run tests to verify the fix:
 
 ```bash
-codemonkeys edit <affected_file1> [affected_file2 ...] \
-  --task-file .codemonkeys/<timestamp>_bug-diagnosis.md \
-  --read-paths <related_test_file1>,<related_test_file2>
+uv run pytest -x -q 2>/dev/null || npm test 2>/dev/null || echo "No test runner found"
 ```
 
-Use the actual timestamp from the file you wrote in step 6.
+- If tests **pass**: offer to revert if needed, then proceed to commit.
+- If tests **fail**: show failures, offer to re-dispatch the editor with the test error as additional context.
 
-This runs a sandboxed `python_file_editor` agent with scoped Edit permissions on the affected files and Read-only access to related tests for context. One agent handles all affected files.
-
-After the agent finishes, show `git diff` and offer to revert if needed.
-
-When the user wants to commit the fix, invoke the `codemonkeys-smart-commit` skill. Do not use the built-in git commit workflow.
+When the user wants to commit, invoke the `codemonkeys-smart-commit` skill.
 
 ## Rules
 
 - Do not modify any source files during investigation. Investigate only.
 - Follow the evidence — read actual code, don't guess from file names.
 - Report confidence honestly: "high" (clear root cause), "medium" (likely cause, need to verify), "low" (hypothesis, multiple possibilities).
-- After writing the diagnosis, tell the user: "Diagnosis written to `.codemonkeys/YYYYMMDD-HHMMSS_bug-diagnosis.md` — review it and ask me to implement the fix when ready."
+- The diagnosis gates the fix — no fix without an approved diagnosis.

@@ -252,32 +252,23 @@ Fix issues inline. No need to re-review — just fix and move on.
 
 ## Phase 3: Implementation
 
-When the user approves the plan and asks to implement, execute each task by dispatching it through a codemonkeys agent:
+When the user approves the plan and asks to implement, execute each task by dispatching it through a code-editor agent:
 
-For tasks that **create new files** (tests, features, docs):
-```bash
-codemonkeys implement <file1> [file2 ...] \
-  --task "Step description from the plan" \
-  --read-paths dependency1.py,dependency2.py
-```
+1. Read the appropriate language guidelines from `.claude/agents/codemonkeys-guidelines/` based on target file extensions
+2. For each task in the plan:
+   - Extract the file paths from the task's **Files** section
+   - Build the task description from the step content (include the full code snippets and instructions)
+   - Spawn an Agent tool call with:
+     - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools and worktree isolation from AGENT.md frontmatter)
+     - `prompt`: guidelines content + `"\n\n## Task\n\n"` + task description including target files and what to implement
+   - After the agent completes, merge changes back: `git checkout <worktree-branch> -- <file_paths>`
+   - Run the test/verification command from the plan
+   - If tests fail, re-dispatch with the error as additional context
+   - If tests pass, proceed to next task
 
-For tasks that **modify existing files** (fixes, refactors):
-```bash
-codemonkeys edit <file1> [file2 ...] \
-  --task "Step description from the plan" \
-  --task-type refactor \
-  --read-paths dependency1.py,dependency2.py
-```
+For independent tasks (no dependency between them), dispatch multiple agents in parallel.
 
-For each task in the plan:
-1. Extract the file paths from the task's **Files** section
-2. Extract the read paths from the task's **Agent permissions** section
-3. Build the task description from the step content
-4. Use `codemonkeys implement` for Create files, `codemonkeys edit` for Modify files
-5. Run the test command from the plan to verify
-6. Commit when the task passes
-
-This keeps all edits sandboxed with explicit permissions, logged, and cost-tracked.
+Order tasks so dependencies come first — a task that creates a type used by later tasks must complete before those tasks start.
 
 ## Phase 4: Spec Compliance Review
 
@@ -316,7 +307,7 @@ Only report findings at 80%+ confidence. For each finding:
 ### 4. Act on findings
 
 - If no findings: "Implementation matches the design spec. Feature complete."
-- If findings exist: present them, then offer to dispatch `codemonkeys edit` to fix each one.
+- If findings exist: present them, then offer to dispatch the code-editor agent (same pattern as Phase 3) to fix each one.
 
 ## Committing
 

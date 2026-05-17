@@ -18,18 +18,23 @@ Ask the user which output format they want:
 - **Markdown report** — detailed report at `.codemonkeys/research/YYYYMMDD-HHMMSS_<topic>.md`
 - **HTML visualization** — generates markdown report, then invokes `codemonkeys-visualize` to render it in the browser
 
-### 3. Run the research agent
+### 3. Determine output path
 
-For SKILL.md or markdown:
+Based on format choice:
+- **Skill:** `.claude/skills/<topic-slug>/SKILL.md`
+- **Markdown:** `.codemonkeys/research/YYYYMMDD-HHMMSS_<topic-slug>.md`
 
-```bash
-codemonkeys research "<topic with optional URLs>" --format skill
-codemonkeys research "<topic with optional URLs>" --format markdown
-```
+Create the parent directory if needed.
 
-Show the exact command before running it. The agent runs on Opus and has full web access — it will search, read sources, follow links, and verify claims autonomously.
+### 4. Run the research agent
 
-### 4. Review output
+Spawn an Agent tool call with:
+- `subagent_type: "codemonkeys-researcher"` (enforces web-only tools and Opus model from AGENT.md frontmatter)
+- `prompt`: `"## Task\n\nResearch: <topic>\n\nOutput format: <skill or markdown>\nOutput path: <path>\n\nWrite the completed report to the output path."`
+
+The agent runs autonomously — it will search, read sources, follow links, and verify claims.
+
+### 5. Review output
 
 After the agent completes:
 
@@ -37,13 +42,14 @@ After the agent completes:
 2. Show the user a summary: how many sources consulted, any confidence notes, key sections
 3. If HTML format was requested, invoke the `codemonkeys-visualize` skill to render the markdown report as an interactive HTML page
 
-### 5. Iterate (optional)
+### 6. Iterate (optional)
 
-If the user wants deeper coverage on a specific section, run the research agent again with a more focused topic and merge the results manually, or edit the output file directly.
+If the user wants deeper coverage on a specific section, dispatch the research agent again with a more focused topic and merge the results manually, or edit the output file directly.
 
 ## Rules
 
-- Always show the exact command before running it.
+- Always tell the user what you're about to do before dispatching the agent.
 - The research agent is autonomous — let it run without interruption.
 - For HTML output, always generate the markdown report first, then visualize.
 - Do not fabricate research results yourself — always dispatch the agent.
+- The researcher agent's model and tool restrictions are defined in its AGENT.md frontmatter.

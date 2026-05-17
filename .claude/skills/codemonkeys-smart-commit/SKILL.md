@@ -1,6 +1,6 @@
 ---
 name: codemonkeys-smart-commit
-description: Use when the user wants to commit changes, save work, or is done with a task — handles branch detection, offers to move changes off main onto a named feature branch, updates docs (README, CHANGELOG, CLAUDE.md) via a sandboxed codemonkeys agent when changes are meaningful, and generates a structured commit message
+description: Use when the user wants to commit changes, save work, or is done with a task — handles branch detection, offers to move changes off main onto a named feature branch, updates docs (README, CHANGELOG, CLAUDE.md) via a sandboxed editor agent when changes are meaningful, and generates a structured commit message
 ---
 
 Commit the user's work. Handle branch hygiene, doc updates, and commit message generation.
@@ -75,13 +75,14 @@ Build a task description that includes:
 - Which sections of each doc are affected
 - What specifically to add, update, or remove
 
-Dispatch a single agent for all docs:
+Dispatch a single editor agent for all docs:
 
-```bash
-codemonkeys edit <doc1> [doc2] [doc3] \
-  --task-type docs \
-  --task "<task description>"
-```
+1. Spawn an Agent tool call with:
+   - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools and worktree isolation from AGENT.md frontmatter)
+   - `prompt`: `"\n\n## Task\n\n"` + task description (which docs to update and how)
+2. After the agent completes, merge changes back: `git checkout <worktree-branch> -- <doc_files>`
+
+(No language guidelines needed for markdown doc updates.)
 
 Only include files that actually need updates — don't pass all three every time.
 
@@ -110,5 +111,5 @@ After a successful commit:
 - Never push without asking — always offer, never auto-push.
 - Never delete branches without asking — after a merge to main, use `AskUserQuestion` with a selector: "Delete the feature branch?" Options: "Delete local + remote", "Delete local only", "Keep branch".
 - Never stage `.env`, credentials, or secrets. Warn if any appear in the diff.
-- If the docs agent fails or produces bad output, skip the doc updates and proceed with the commit �� don't block the commit on docs.
+- If the docs agent fails or produces bad output, skip the doc updates and proceed with the commit — don't block the commit on docs.
 - Keep commit messages concise. The first line is the most important part.
