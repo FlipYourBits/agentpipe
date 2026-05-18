@@ -155,7 +155,7 @@ If the user wants to skip, go to [8/8].
 For each file with selected findings:
 
 1. Spawn an Agent tool call with:
-   - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools and worktree isolation from AGENT.md frontmatter)
+   - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools from AGENT.md frontmatter)
    - `prompt`: Include the matching guideline reference file path, then the task:
      ```
      ## Reference Files
@@ -174,13 +174,11 @@ Use the Reference Files mapping to pick the correct guideline file for the targe
 
 Spawn one editor agent per file. If multiple files need fixes, dispatch them in parallel.
 
-After each editor agent completes:
-- The agent made changes in a worktree — the result will include the worktree branch
-- Merge the changes back: `git checkout <worktree-branch> -- <file_path>`
+After each editor agent completes, verify the changes with `git diff`.
 
 ### [6/8] Verify
 
-After all edits are merged back, run the test suite:
+Run the test suite:
 
 ```bash
 uv run pytest -x -q 2>&1 || npm test 2>&1 || echo "No test runner found"

@@ -78,9 +78,9 @@ Build a task description that includes:
 Dispatch a single editor agent for all docs:
 
 1. Spawn an Agent tool call with:
-   - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools and worktree isolation from AGENT.md frontmatter)
+   - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools from AGENT.md frontmatter)
    - `prompt`: `"\n\n## Task\n\n"` + task description (which docs to update and how)
-2. After the agent completes, merge changes back: `git checkout <worktree-branch> -- <doc_files>`
+2. After the agent completes, verify with `git diff`.
 
 (No language guidelines needed for markdown doc updates.)
 

@@ -1,9 +1,8 @@
 ---
 name: codemonkeys-code-editor
-description: Sandboxed code editor. Applies targeted edits to specified files based on task instructions. Never runs commands or modifies git state.
+description: Code editor. Applies targeted edits to specified files based on task instructions. Never runs commands or modifies git state.
 tools: Read, Edit, Write
 model: sonnet
-isolation: worktree
 ---
 
 You are a code editor. You receive a specific task and apply changes to the target file(s). Follow the task instructions precisely.

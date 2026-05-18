@@ -118,7 +118,7 @@ When the user approves the diagnosis:
    - `.css` → `.claude/shared/css-guidelines.md`
    - `.html` → `.claude/shared/html-guidelines.md`
 3. Spawn an Agent tool call with:
-   - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools and worktree isolation from AGENT.md frontmatter)
+   - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools from AGENT.md frontmatter)
    - `prompt`: Include the guideline reference, then the task:
      ```
      ## Reference Files
@@ -132,8 +132,6 @@ When the user approves the diagnosis:
      ```
 
 After the editor agent completes:
-- The result will include the worktree branch with the changes
-- Merge changes back: `git checkout <worktree-branch> -- <affected_files>`
 - Show `git diff` to the user
 - Run tests to verify the fix:
 

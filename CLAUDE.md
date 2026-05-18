@@ -46,8 +46,7 @@ Read-only reference documents consumed by agents on demand — not skills or wor
 ### Safety Model
 
 - **Tool restrictions:** AGENT.md frontmatter `tools` field enforced by Claude Code — reviewers can only Read, editors can only Read/Edit/Write, researcher can only search web and Write.
-- **Worktree isolation:** Editor agents run in git worktrees. Changes are verified via `git diff` before merging back. Reviewers are read-only (`tools: Read`) and run without worktree isolation for efficiency.
-- **Post-edit verification:** Skills run tests after merging editor changes; offer to revert on failure.
+- **Post-edit verification:** Skills verify editor changes via `git diff` and run tests; offer to revert on failure.
 - **Re-review pass:** After fixes are applied, edited files are re-reviewed to catch issues introduced by the editor.
 
 ## Supported Languages

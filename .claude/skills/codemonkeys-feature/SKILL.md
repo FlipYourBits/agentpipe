@@ -263,7 +263,7 @@ When the user approves the plan and asks to implement, execute each task by disp
      - `.css` → `.claude/shared/css-guidelines.md`
      - `.html` → `.claude/shared/html-guidelines.md`
    - Spawn an Agent tool call with:
-     - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools and worktree isolation from AGENT.md frontmatter)
+     - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools from AGENT.md frontmatter)
      - `prompt`: Include the guideline reference, then the task:
        ```
        ## Reference Files
@@ -275,7 +275,7 @@ When the user approves the plan and asks to implement, execute each task by disp
 
        <task description including target files and what to implement>
        ```
-   - After the agent completes, merge changes back: `git checkout <worktree-branch> -- <file_paths>`
+   - After the agent completes, verify with `git diff`
    - Run the test/verification command from the plan
    - If tests fail, re-dispatch with the error as additional context
    - If tests pass, proceed to next task

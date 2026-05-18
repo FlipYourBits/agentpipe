@@ -98,7 +98,7 @@ Read-only agent that analyzes code and returns structured findings. Contains cod
 
 | Agent | Purpose | Tools | Model | Isolation |
 |-------|---------|-------|-------|-----------|
-| `codemonkeys-code-editor` | Applies targeted edits based on task instructions | Read, Edit, Write | Sonnet | Worktree |
+| `codemonkeys-code-editor` | Applies targeted edits based on task instructions | Read, Edit, Write | Sonnet | — |
 
 Supports all languages. Reads language guidelines from `.claude/shared/` on demand. Never runs commands or modifies git state.
 
@@ -113,8 +113,7 @@ Searches the web, reads documents, follows reference chains, and writes structur
 ## Safety Model
 
 - **Tool restrictions:** Agent frontmatter `tools` field is enforced by Claude Code — reviewers can only Read, editors can only Read/Edit/Write, researcher can only search and Write.
-- **Worktree isolation:** Editor agents run in git worktrees, preventing accidental changes to the working tree. Reviewers are read-only (`tools: Read`) and run without worktree isolation for efficiency.
-- **Post-edit verification:** Skills run tests after merging editor changes and offer to revert on failure.
+- **Post-edit verification:** Skills verify editor changes via `git diff` and run tests; offer to revert on failure.
 - **Re-review pass:** After fixes are applied, edited files are re-reviewed to catch issues introduced by the editor.
 - **No auto-commit/push:** All commits and pushes require explicit user approval.
 
@@ -140,6 +139,41 @@ Searches the web, reads documents, follows reference chains, and writes structur
 │   └── codemonkeys-smart-commit/SKILL.md
 └── settings.json
 ```
+
+## Installation
+
+Install codemonkeys into any project that uses Claude Code.
+
+**Linux / macOS:**
+
+```bash
+curl -sL https://raw.githubusercontent.com/FlipYourBits/codemonkeys/main/install.sh | bash
+```
+
+Or clone and run locally:
+
+```bash
+git clone https://github.com/FlipYourBits/codemonkeys.git
+cd your-project
+../codemonkeys/install.sh
+```
+
+**Windows (PowerShell):**
+
+```powershell
+git clone https://github.com/FlipYourBits/codemonkeys.git
+cd your-project
+..\codemonkeys\install.ps1
+```
+
+**Options:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--branch` / `-Branch` | Git branch to install from | `main` |
+| `--dir` / `-Dir` | Target project directory | Current directory |
+
+Re-run anytime to update to the latest version.
 
 ## Usage
 
