@@ -254,13 +254,27 @@ Fix issues inline. No need to re-review — just fix and move on.
 
 When the user approves the plan and asks to implement, execute each task by dispatching it through a code-editor agent:
 
-1. Read the appropriate language guidelines from `.claude/agents/codemonkeys-guidelines/` based on target file extensions
-2. For each task in the plan:
+1. For each task in the plan:
    - Extract the file paths from the task's **Files** section
    - Build the task description from the step content (include the full code snippets and instructions)
+   - Determine the language guideline file from the task's file extensions:
+     - `.py` → `.claude/shared/python-guidelines.md`
+     - `.js`, `.jsx`, `.ts`, `.tsx` → `.claude/shared/js-guidelines.md`
+     - `.css` → `.claude/shared/css-guidelines.md`
+     - `.html` → `.claude/shared/html-guidelines.md`
    - Spawn an Agent tool call with:
      - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools and worktree isolation from AGENT.md frontmatter)
-     - `prompt`: guidelines content + `"\n\n## Task\n\n"` + task description including target files and what to implement
+     - `prompt`: Include the guideline reference, then the task:
+       ```
+       ## Reference Files
+
+       Read before editing:
+       - .claude/shared/<language>-guidelines.md
+
+       ## Task
+
+       <task description including target files and what to implement>
+       ```
    - After the agent completes, merge changes back: `git checkout <worktree-branch> -- <file_paths>`
    - Run the test/verification command from the plan
    - If tests fail, re-dispatch with the error as additional context

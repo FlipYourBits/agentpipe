@@ -111,11 +111,25 @@ After writing, tell the user: "Diagnosis written to `.codemonkeys/YYYYMMDD-HHMMS
 
 When the user approves the diagnosis:
 
-1. Read the appropriate language guidelines from `.claude/agents/codemonkeys-guidelines/` based on affected file extensions
-2. Read the diagnosis file content
+1. Read the diagnosis file content
+2. Determine the language guideline file from the affected file extensions:
+   - `.py` → `.claude/shared/python-guidelines.md`
+   - `.js`, `.jsx`, `.ts`, `.tsx` → `.claude/shared/js-guidelines.md`
+   - `.css` → `.claude/shared/css-guidelines.md`
+   - `.html` → `.claude/shared/html-guidelines.md`
 3. Spawn an Agent tool call with:
    - `subagent_type: "codemonkeys-code-editor"` (enforces file-only tools and worktree isolation from AGENT.md frontmatter)
-   - `prompt`: guidelines content + `"\n\n## Task\n\n"` + the full diagnosis content (root cause, affected files, proposed fix)
+   - `prompt`: Include the guideline reference, then the task:
+     ```
+     ## Reference Files
+
+     Read before editing:
+     - .claude/shared/<language>-guidelines.md
+
+     ## Task
+
+     <full diagnosis content (root cause, affected files, proposed fix)>
+     ```
 
 After the editor agent completes:
 - The result will include the worktree branch with the changes
@@ -124,7 +138,7 @@ After the editor agent completes:
 - Run tests to verify the fix:
 
 ```bash
-uv run pytest -x -q 2>/dev/null || npm test 2>/dev/null || echo "No test runner found"
+uv run pytest -x -q 2>&1 || npm test 2>&1 || echo "No test runner found"
 ```
 
 - If tests **pass**: offer to revert if needed, then proceed to commit.
