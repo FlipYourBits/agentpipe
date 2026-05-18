@@ -161,6 +161,12 @@ cd your-project
 **Windows (PowerShell):**
 
 ```powershell
+irm https://raw.githubusercontent.com/FlipYourBits/codemonkeys/main/install.ps1 | iex
+```
+
+Or clone and run locally:
+
+```powershell
 git clone https://github.com/FlipYourBits/codemonkeys.git
 cd your-project
 ..\codemonkeys\install.ps1
