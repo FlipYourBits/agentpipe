@@ -42,7 +42,7 @@ try {
     }
 
     Write-Host "Installing agents..."
-    foreach ($Agent in @("codemonkeys-code-reviewer", "codemonkeys-code-editor", "codemonkeys-researcher")) {
+    foreach ($Agent in @("codemonkeys-code-reviewer", "codemonkeys-code-editor", "codemonkeys-researcher", "codemonkeys-test-reviewer")) {
         $AgentSrc = Join-Path $Src "agents/$Agent"
         $AgentDest = Join-Path $Dest "agents/$Agent"
         if (Test-Path $AgentDest) { Remove-Item -Recurse -Force $AgentDest }
@@ -50,7 +50,7 @@ try {
     }
 
     Write-Host "Installing skills..."
-    foreach ($Skill in @("codemonkeys-bugfix", "codemonkeys-code-review", "codemonkeys-feature", "codemonkeys-research", "codemonkeys-smart-commit", "codemonkeys-visualize")) {
+    foreach ($Skill in @("codemonkeys-bugfix", "codemonkeys-code-review", "codemonkeys-feature", "codemonkeys-research", "codemonkeys-smart-commit", "codemonkeys-test-quality", "codemonkeys-visualize")) {
         $SkillSrc = Join-Path $Src "skills/$Skill"
         $SkillDest = Join-Path $Dest "skills/$Skill"
         if (Test-Path $SkillDest) { Remove-Item -Recurse -Force $SkillDest }
@@ -71,6 +71,7 @@ try {
     Write-Host "  /codemonkeys-feature"
     Write-Host "  /codemonkeys-research"
     Write-Host "  /codemonkeys-visualize"
+    Write-Host "  /codemonkeys-test-quality"
     Write-Host "  /codemonkeys-smart-commit"
 }
 finally {
