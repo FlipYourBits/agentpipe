@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Review Findings</title>
+    <style>
+        :root {
+            --bg-page: #0f1117;
+            --bg-card: #161b22;
+            --bg-elevated: #1c2333;
+            --border-default: #30363d;
+            --border-active: #58a6ff;
+            --text-heading: #f0f3f6;
+            --text-body: #e1e4e8;
+            --text-secondary: #c9d1d9;
+            --text-muted: #8b949e;
+            --color-success: #3fb950;
+            --color-warning: #d29922;
+            --color-error: #f85149;
+            --color-info: #58a6ff;
+            --cat-cyan: #39d2c0;
+            --cat-green: #3fb950;
+            --cat-purple: #bc8cff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg-page);
+            color: var(--text-body);
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        * { transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, transform 0.2s ease; }
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; animation: none !important; }
+        }
+
+        /* Header */
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .review-header h1 {
+            font-size: 1.5rem;
+            color: var(--text-heading);
+        }
+        .summary-stats {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .stat {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .stat .stat-count {
+            font-weight: 700;
+            color: var(--text-body);
+        }
+        .stat.high .stat-count { color: var(--color-error); }
+        .stat.medium .stat-count { color: var(--color-warning); }
+        .stat.low .stat-count { color: var(--color-info); }
+
+        /* Search bar */
+        .search-bar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            padding: 0.75rem 0;
+            background: var(--bg-page);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .search-bar input {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            color: var(--text-body);
+            font-size: 0.85rem;
+            outline: none;
+        }
+        .search-bar input:focus { border-color: var(--border-active); }
+        .search-bar .count { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+        .search-bar .hint { font-size: 0.7rem; color: var(--text-muted); opacity: 0.6; }
+
+        /* Filter pills */
+        .filter-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .filter-pill {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 9999px;
+            padding: 0.3rem 0.85rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+        .filter-pill:hover { border-color: var(--border-active); color: var(--text-body); }
+        .filter-pill.active {
+            background: var(--bg-elevated);
+            border-color: var(--border-active);
+            color: var(--text-body);
+        }
+
+        /* File group */
+        .file-group { margin-bottom: 1.5rem; }
+        .file-group-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0;
+            cursor: pointer;
+            user-select: none;
+        }
+        .file-group-header::before {
+            content: '\25B8';
+            display: inline-block;
+            transition: transform 0.2s ease;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .file-group-header.open::before { transform: rotate(90deg); }
+        .file-group-name {
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.9rem;
+            color: var(--cat-cyan);
+        }
+        .file-group-count {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .file-group-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .file-group-body.open { max-height: 10000px; }
+
+        /* Finding card */
+        .finding-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.75rem;
+            border-left: 3px solid var(--border-default);
+        }
+        .finding-card.severity-high { border-left-color: var(--color-error); }
+        .finding-card.severity-medium { border-left-color: var(--color-warning); }
+        .finding-card.severity-low { border-left-color: var(--color-info); }
+        .finding-card.filter-hidden { display: none; }
+        .finding-card.search-hidden { display: none; }
+
+        .finding-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .finding-number {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            min-width: 1.8rem;
+        }
+        .finding-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-heading);
+            flex: 1;
+        }
+        .finding-line {
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .finding-badges {
+            display: flex;
+            gap: 0.4rem;
+            margin-bottom: 0.6rem;
+        }
+        .severity-badge, .category-badge {
+            display: inline-block;
+            padding: 0.15rem 0.55rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .severity-badge.high {
+            background: color-mix(in srgb, var(--color-error) 15%, transparent);
+            color: var(--color-error);
+            border: 1px solid color-mix(in srgb, var(--color-error) 30%, transparent);
+        }
+        .severity-badge.medium {
+            background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+            color: var(--color-warning);
+            border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
+        }
+        .severity-badge.low {
+            background: color-mix(in srgb, var(--color-info) 15%, transparent);
+            color: var(--color-info);
+            border: 1px solid color-mix(in srgb, var(--color-info) 30%, transparent);
+        }
+        .category-badge {
+            background: color-mix(in srgb, var(--cat-purple) 12%, transparent);
+            color: var(--cat-purple);
+            border: 1px solid color-mix(in srgb, var(--cat-purple) 25%, transparent);
+        }
+
+        .finding-description {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+        .finding-suggestion {
+            font-size: 0.83rem;
+            color: var(--text-muted);
+            padding: 0.6rem 0.8rem;
+            background: var(--bg-elevated);
+            border-radius: 6px;
+            border-left: 2px solid var(--cat-green);
+        }
+        .finding-suggestion::before {
+            content: 'Suggestion: ';
+            font-weight: 600;
+            color: var(--cat-green);
+        }
+    </style>
+</head>
+<body>
+    <div class="review-header">
+        <h1>Code Review Findings</h1>
+        <div class="summary-stats">
+            <span class="stat"><span class="stat-count" id="totalCount">0</span> findings</span>
+            <span class="stat high"><span class="stat-count" id="highCount">0</span> high</span>
+            <span class="stat medium"><span class="stat-count" id="mediumCount">0</span> medium</span>
+            <span class="stat low"><span class="stat-count" id="lowCount">0</span> low</span>
+        </div>
+    </div>
+
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Filter by file, category, or keyword...">
+        <span class="count" id="searchCount"></span>
+        <span class="hint">Press / to focus</span>
+    </div>
+
+    <div class="filter-bar">
+        <button class="filter-pill active" data-filter="all">All</button>
+        <button class="filter-pill" data-filter="high">High</button>
+        <button class="filter-pill" data-filter="medium">Medium</button>
+        <button class="filter-pill" data-filter="low">Low</button>
+    </div>
+
+    <div id="findingsContainer"></div>
+
+    <script>
+    // <!--FINDINGS_DATA-->
+    const findings = [];
+    // <!--/FINDINGS_DATA-->
+
+    function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    function renderFindings() {
+        const container = document.getElementById('findingsContainer');
+        const grouped = {};
+        findings.forEach(f => {
+            if (!grouped[f.file]) grouped[f.file] = [];
+            grouped[f.file].push(f);
+        });
+
+        document.getElementById('totalCount').textContent = findings.length;
+        document.getElementById('highCount').textContent = findings.filter(f => f.severity === 'high').length;
+        document.getElementById('mediumCount').textContent = findings.filter(f => f.severity === 'medium').length;
+        document.getElementById('lowCount').textContent = findings.filter(f => f.severity === 'low').length;
+
+        const sortedFiles = Object.keys(grouped).sort();
+        container.innerHTML = sortedFiles.map(file => {
+            const ff = grouped[file];
+            const cards = ff.map(f => `
+                <div class="finding-card severity-${f.severity}" data-severity="${f.severity}" data-searchable data-search="${f.file} ${f.severity} ${f.category} ${f.title} ${f.description}">
+                    <div class="finding-header">
+                        <span class="finding-number">#${f.id}</span>
+                        <span class="finding-title">${esc(f.title)}</span>
+                        <span class="finding-line">L${f.line}</span>
+                    </div>
+                    <div class="finding-badges">
+                        <span class="severity-badge ${f.severity}">${f.severity}</span>
+                        <span class="category-badge">${f.category}</span>
+                    </div>
+                    <div class="finding-description">${esc(f.description)}</div>
+                    ${f.suggestion ? `<div class="finding-suggestion">${esc(f.suggestion)}</div>` : ''}
+                </div>
+            `).join('');
+
+            return `
+                <div class="file-group">
+                    <div class="file-group-header open">
+                        <span class="file-group-name">${esc(file)}</span>
+                        <span class="file-group-count">${ff.length} finding${ff.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="file-group-body open">${cards}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function initFileGroupToggles() {
+        document.getElementById('findingsContainer').addEventListener('click', e => {
+            const header = e.target.closest('.file-group-header');
+            if (!header) return;
+            header.classList.toggle('open');
+            header.nextElementSibling.classList.toggle('open');
+        });
+    }
+
+    function initSeverityFilter() {
+        const pills = document.querySelectorAll('.filter-pill');
+        pills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                pills.forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                const filter = pill.getAttribute('data-filter');
+                document.querySelectorAll('.finding-card').forEach(card => {
+                    card.classList.toggle('filter-hidden', filter !== 'all' && card.getAttribute('data-severity') !== filter);
+                });
+                document.querySelectorAll('.file-group').forEach(group => {
+                    const visible = group.querySelectorAll('.finding-card:not(.filter-hidden)').length;
+                    group.querySelector('.file-group-count').textContent = `${visible} finding${visible !== 1 ? 's' : ''}`;
+                    group.style.display = visible === 0 ? 'none' : '';
+                });
+            });
+        });
+    }
+
+    function initSearch() {
+        const input = document.getElementById('searchInput');
+        const countEl = document.getElementById('searchCount');
+        if (!input) return;
+        let timer;
+        function filter() {
+            const q = input.value.toLowerCase().trim();
+            const items = document.querySelectorAll('[data-searchable]');
+            let visible = 0;
+            items.forEach(item => {
+                const text = (item.getAttribute('data-search') || item.textContent).toLowerCase();
+                const match = !q || text.includes(q);
+                item.classList.toggle('search-hidden', !match);
+                if (match) visible++;
+            });
+            if (countEl) countEl.textContent = q ? `${visible} of ${items.length}` : '';
+        }
+        input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(filter, 150); });
+        document.addEventListener('keydown', e => {
+            if (e.key === '/' && document.activeElement !== input) { e.preventDefault(); input.focus(); }
+            if (e.key === 'Escape' && document.activeElement === input) { input.value = ''; filter(); input.blur(); }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        renderFindings();
+        initFileGroupToggles();
+        initSeverityFilter();
+        initSearch();
+    });
+    </script>
+</body>
+</html>

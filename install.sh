@@ -45,17 +45,16 @@ dest="$target_dir/.claude"
 mkdir -p "$dest/agents" "$dest/skills" "$dest/shared"
 
 echo "Installing agents..."
-cp -r "$src/agents/codemonkeys-code-reviewer" "$dest/agents/"
-cp -r "$src/agents/codemonkeys-code-editor" "$dest/agents/"
-cp -r "$src/agents/codemonkeys-researcher" "$dest/agents/"
+for agent in codemonkeys-code-reviewer codemonkeys-code-editor codemonkeys-researcher codemonkeys-test-reviewer; do
+  rm -rf "$dest/agents/$agent"
+  cp -r "$src/agents/$agent" "$dest/agents/"
+done
 
 echo "Installing skills..."
-cp -r "$src/skills/codemonkeys-bugfix" "$dest/skills/"
-cp -r "$src/skills/codemonkeys-code-review" "$dest/skills/"
-cp -r "$src/skills/codemonkeys-feature" "$dest/skills/"
-cp -r "$src/skills/codemonkeys-research" "$dest/skills/"
-cp -r "$src/skills/codemonkeys-smart-commit" "$dest/skills/"
-cp -r "$src/skills/codemonkeys-visualize" "$dest/skills/"
+for skill in codemonkeys-bugfix codemonkeys-code-review codemonkeys-feature codemonkeys-research codemonkeys-smart-commit codemonkeys-test-quality codemonkeys-visualize; do
+  rm -rf "$dest/skills/$skill"
+  cp -r "$src/skills/$skill" "$dest/skills/"
+done
 
 echo "Installing shared guidelines..."
 cp "$src/shared/"*.md "$dest/shared/"
@@ -69,4 +68,5 @@ echo "  /codemonkeys-bugfix"
 echo "  /codemonkeys-feature"
 echo "  /codemonkeys-research"
 echo "  /codemonkeys-visualize"
+echo "  /codemonkeys-test-quality"
 echo "  /codemonkeys-smart-commit"

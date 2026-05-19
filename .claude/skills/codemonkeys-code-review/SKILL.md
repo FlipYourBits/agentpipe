@@ -5,7 +5,7 @@ description: Use when the user wants to review code for issues, audit files, or 
 
 Run the codemonkeys review pipeline. Review files for issues, present findings visually, and edit what the user selects.
 
-**Phase markers:** Announce each phase to the user as you enter it: `[1/8] Targets`, `[2/8] Context & Review`, `[3/8] Findings`, `[4/8] Visualize`, `[5/8] Fixes`, `[6/8] Verify`, `[7/8] Re-review`, `[8/8] Done`.
+**Phase markers:** Announce each phase to the user as you enter it: `[1/7] Targets`, `[2/7] Context & Review`, `[3/7] Findings`, `[4/7] Visualize`, `[5/7] Fixes`, `[6/7] Verify`, `[7/7] Done`.
 
 ## Red Flags — Stop and Follow the Process
 
@@ -37,7 +37,7 @@ Shared checklists and language guidelines live in `.claude/shared/`. Include the
 
 ## Process
 
-### [1/8] Targets
+### [1/7] Targets
 
 Figure out what to review. Ask the user if not obvious from context:
 
@@ -49,11 +49,11 @@ If the user says "audit my changes" or "review what I changed", use branch diff.
 
 Filter to supported extensions only. Warn about skipped files.
 
-### [2/8] Context & Review
+### [2/7] Context & Review
 
 #### Batch large reviews
 
-If there are more than 15 target files, batch them in groups of 15. Process each batch fully through [3/8] Findings before starting the next batch. Merge findings across all batches before proceeding to [4/8] Visualize. Tell the user: "Reviewing in N batches of up to 15 files each."
+If there are more than 15 target files, batch them in groups of 15. Process each batch fully through [3/7] Findings before starting the next batch. Merge findings across all batches before proceeding to [4/7] Visualize. Tell the user: "Reviewing in N batches of up to 15 files each."
 
 #### Gather context files
 
@@ -91,15 +91,22 @@ grep -oE '(href|src)="[^"]*\.(css|js)"' <file> | sed 's/.*="//' | sed 's/"//' | 
 
 Cap at 5 context files per target. If a context file is also a target file being reviewed, still include it — each reviewer runs independently.
 
-#### Dispatch reviewers
+#### Batch by language and dispatch reviewers
 
-For each target file, spawn an Agent tool call with:
+Group target files by language using the extension → reference file mapping. Within each language group, batch up to 5 files per reviewer agent. This reduces token overhead — each agent reads the language guidelines once for all files in its batch instead of once per file.
+
+For each batch, merge the context files gathered for all target files in the batch, deduplicate, and cap at 8 context files per batch. Exclude files that are already target files in the same batch (the reviewer will read them anyway).
+
+For each batch, spawn an Agent tool call with:
 - `subagent_type`: `codemonkeys-code-reviewer`
 - `prompt`:
   ```
   ## Task
 
-  Review the file: <target_file_path>
+  Review the following files:
+  - <target_file_1>
+  - <target_file_2>
+  - <target_file_3>
 
   ## Reference Files
 
@@ -114,13 +121,13 @@ For each target file, spawn an Agent tool call with:
   ...
   ```
 
-Use the Reference Files mapping above to pick the correct guideline file for the target file's extension. If no context files were found, omit the Context Files section.
+Use the Reference Files mapping above to pick the correct guideline file for the batch's language. If no context files were found, omit the Context Files section.
 
-Spawn **all reviewer agents in parallel** (multiple Agent tool calls in a single message). Each agent will read the target file and context files, then return structured markdown findings.
+Spawn **all reviewer agents in parallel** (multiple Agent tool calls in a single message). Each agent reviews all files in its batch and returns structured markdown findings with the correct file path per finding.
 
-Tell the user how many files are being reviewed before dispatching.
+Tell the user how many files are being reviewed across how many reviewer agents before dispatching.
 
-### [3/8] Findings
+### [3/7] Findings
 
 After all reviewer agents return:
 
@@ -132,17 +139,23 @@ After all reviewer agents return:
 
 If no findings across all files, announce "No issues found" and stop.
 
-### [4/8] Visualize
+### [4/7] Visualize
 
-Invoke the `codemonkeys-visualize` skill to generate an HTML page showing all findings:
-- Group findings by file
-- Color-code by severity (high=red, medium=yellow, low=blue)
-- Show category, line number, title, description, suggestion for each
-- Number each finding so the user can reference them
+Use the HTML template at `.claude/skills/codemonkeys-code-review/templates/findings.html`:
 
-Open the HTML page in the browser.
+1. Read the template file.
+2. Build a JSON array from the deduplicated findings. Each entry: `{ id, file, line, severity, category, title, description, suggestion }`. The `id` is the finding's sequential number.
+3. In the template, replace `const findings = [];` (the line between the `FINDINGS_DATA` comments) with `const findings = <JSON array>;`.
+4. Write the result to `.codemonkeys/visuals/YYYYMMDD-HHMMSS_code-review.html`. Create the directory if needed.
+5. Open in browser:
+   - Linux: `xdg-open <file>`
+   - macOS: `open <file>`
+   - Windows (Git Bash / WSL): `start <file>` or `wslview <file>`
+   - Fallback: `uv run python -m webbrowser <file>`
 
-### [5/8] Fixes
+Do **not** invoke the `codemonkeys-visualize` skill — the template is self-contained.
+
+### [5/7] Fixes
 
 Ask the user what to fix. Examples of valid responses:
 - "Fix all high severity findings"
@@ -150,7 +163,7 @@ Ask the user what to fix. Examples of valid responses:
 - "Fix everything in runner.py"
 - "Skip all"
 
-If the user wants to skip, go to [8/8].
+If the user wants to skip, go to [7/7].
 
 For each file with selected findings:
 
@@ -174,9 +187,11 @@ Use the Reference Files mapping to pick the correct guideline file for the targe
 
 Spawn one editor agent per file. If multiple files need fixes, dispatch them in parallel.
 
+Each editor agent self-validates after editing — it re-reads modified files and checks for regressions in the same issue categories. This replaces the separate re-review pass.
+
 After each editor agent completes, verify the changes with `git diff`.
 
-### [6/8] Verify
+### [6/7] Verify
 
 Run the test suite:
 
@@ -184,22 +199,10 @@ Run the test suite:
 uv run pytest -x -q 2>&1 || npm test 2>&1 || echo "No test runner found"
 ```
 
-- If tests **pass**: proceed to re-review.
+- If tests **pass**: proceed to done.
 - If tests **fail**: show the failures to the user and offer to fix them. Dispatch another editor agent on the failing file(s) with the test error as the task. After fixing, re-run tests before proceeding.
 
-### [7/8] Re-review
-
-Re-review the edited files to catch issues introduced by the fixes. This pass is lighter than the initial review — it only checks files that were modified in [5/8].
-
-1. Get the list of files that were edited: the same files from the fix phase.
-2. Dispatch reviewer agents on those files only (same pattern as [2/8] — same subagent_type, same context file gathering).
-3. If **new findings** are returned (findings that weren't in the original set):
-   - Show them to the user: "Re-review found N new issues introduced by the fixes."
-   - Offer to fix them (same flow as [5/8]).
-   - If the user fixes them, run tests again but **do not re-review a second time** — one re-review pass is the limit.
-4. If **no new findings**: proceed to done.
-
-### [8/8] Done
+### [7/7] Done
 
 Show results:
 - `git diff` to review all changes
